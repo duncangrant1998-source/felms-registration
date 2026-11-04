@@ -4,37 +4,66 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title><%= typeof title !== "undefined" ? title + " — FEL Motorsports" : "FEL Motorsports" %></title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/theme.css">
 </head>
 <body>
-<% if (typeof nav !== "undefined" && nav === "staff") { %>
-  <div class="navbar">
-    <a class="markbar" href="/staff">
-      <span class="m-logo">FEL</span>
-      <span class="m-txt">Credential Desk</span>
-    </a>
-    <div class="navlinks">
-      <a href="/staff" class="<%= active === 'dashboard' ? 'on' : '' %>">Roster</a>
-      <a href="/staff/teams" class="<%= active === 'teams' ? 'on' : '' %>">Teams &amp; Allowances</a>
-      <a href="/staff/cards" class="<%= active === 'cards' ? 'on' : '' %>">Hard Cards</a>
-      <a href="/staff/credential-requests" class="<%= active === 'requests' ? 'on' : '' %>">Credential Requests</a>
-      <a href="/staff/documents" class="<%= active === 'documents' ? 'on' : '' %>">Documents</a>
-    </div>
-    <span class="spacer"></span>
-    <a class="btn sm ghost" href="/staff/logout">Sign out</a>
-  </div>
-<% } else if (typeof nav !== "undefined" && nav === "portal") { %>
-  <div class="navbar">
-    <a class="markbar" href="/portal">
-      <span class="m-logo">FEL</span>
-      <span class="m-txt">Team Portal</span>
-    </a>
-    <div class="navlinks">
-      <a href="/portal" class="<%= active === 'roster' ? 'on' : '' %>">My Roster</a>
-      <a href="/portal/credentials" class="<%= active === 'credentials' ? 'on' : '' %>">Credentials</a>
-      <a href="/portal/documents" class="<%= active === 'documents' ? 'on' : '' %>">Documents</a>
-    </div>
-    <span class="spacer"></span>
-    <a class="btn sm ghost" href="/portal/logout">Sign out</a>
-  </div>
+<%
+  var ICON = {
+    home: '<path d="M4 10.5 12 4l8 6.5V20h-5v-6H9v6H4z"/>',
+    users: '<circle cx="9" cy="8.5" r="3"/><path d="M3.5 20c0-3.2 2.5-5.3 5.5-5.3s5.5 2.1 5.5 5.3"/><circle cx="17" cy="9.5" r="2.4"/><path d="M15.2 20c.3-2.1 1.8-3.7 4.3-4"/>',
+    idcard: '<rect x="3" y="5.5" width="18" height="13" rx="2"/><circle cx="8.5" cy="12" r="2"/><path d="M13 10.5h6M13 14h4"/>',
+    bell: '<path d="M6 16v-6a6 6 0 1 1 12 0v6l1.7 2.2H4.3z"/><path d="M10 20.2a2 2 0 0 0 4 0"/>',
+    file: '<path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4"/><path d="M9.5 12.5h5M9.5 15.5h5"/>',
+    doc: '<path d="M4 4h12l4 4v12H4z"/><path d="M16 4v4h4"/><path d="M8 11h8M8 14h8M8 17h5"/>'
+  };
+  function sideIcon(key) {
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICON[key] + '</svg>';
+  }
+%>
+<% if (typeof nav !== "undefined" && (nav === "staff" || nav === "portal")) { %>
+  <div class="felm-shell">
+    <nav class="felm-side" aria-label="Primary">
+      <div class="felm-side-mark">FEL</div>
+      <div class="felm-side-items">
+        <% if (nav === "staff") { %>
+          <div class="felm-side-group">
+            <a href="/staff" class="felm-side-item <%= active === 'dashboard' ? 'active' : '' %>"><%- sideIcon('home') %><span>Roster</span></a>
+          </div>
+          <div class="felm-side-group">
+            <div class="felm-side-group-label">Registration</div>
+            <a href="/staff/teams" class="felm-side-item <%= active === 'teams' ? 'active' : '' %>"><%- sideIcon('users') %><span>Teams &amp; Allowances</span></a>
+            <a href="/staff/cards" class="felm-side-item <%= active === 'cards' ? 'active' : '' %>"><%- sideIcon('idcard') %><span>Hard Cards</span></a>
+            <a href="/staff/credential-requests" class="felm-side-item <%= active === 'requests' ? 'active' : '' %>"><%- sideIcon('bell') %><span>Credential Requests</span></a>
+            <a href="/staff/documents" class="felm-side-item <%= active === 'documents' ? 'active' : '' %>"><%- sideIcon('doc') %><span>Documents</span></a>
+          </div>
+        <% } else { %>
+          <div class="felm-side-group">
+            <a href="/portal" class="felm-side-item <%= active === 'roster' ? 'active' : '' %>"><%- sideIcon('home') %><span>My Roster</span></a>
+          </div>
+          <div class="felm-side-group">
+            <div class="felm-side-group-label">Team</div>
+            <a href="/portal/credentials" class="felm-side-item <%= active === 'credentials' ? 'active' : '' %>"><%- sideIcon('idcard') %><span>Credentials</span></a>
+            <a href="/portal/documents" class="felm-side-item <%= active === 'documents' ? 'active' : '' %>"><%- sideIcon('doc') %><span>Documents</span></a>
+          </div>
+        <% } %>
+      </div>
+      <div class="felm-side-foot">
+        <span class="felm-side-avatar"><%= nav === "staff" ? "ST" : "TM" %></span>
+        <span class="felm-side-id"><span class="n"><%= nav === "staff" ? "Staff" : (typeof team !== "undefined" && team ? team.name : "Team") %></span></span>
+        <a class="felm-side-signout" href="<%= nav === 'staff' ? '/staff/logout' : '/portal/logout' %>">Sign out</a>
+      </div>
+    </nav>
+    <div class="felm-main">
+      <header class="felm-topbar">
+        <div class="felm-topbar-left">
+          <span class="felm-topbar-series">FEL Motorsports</span>
+          <span class="felm-topbar-sep"></span>
+          <span class="felm-topbar-place"><%= EVENT_NAME %></span>
+        </div>
+        <span class="felm-topbar-badge"><%= nav === "staff" ? "Credential Desk" : "Team Portal" %></span>
+      </header>
+      <div class="felm-content">
 <% } %>
