@@ -1,0 +1,54 @@
+<%- include('../partials/head', { title, nav, active }) %>
+<div class="page-head">
+  <div>
+    <div class="kicker"><a href="/portal" style="color:var(--muted);text-decoration:none">&larr; <%= team.name %> roster</a></div>
+    <h1><%= member ? 'Edit Team Member' : 'Add Team Member' %></h1>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="panel" style="margin-top:18px">
+    <div class="panel-body">
+      <form method="post" action="<%= member ? '/portal/members/' + member.id + '/update' : '/portal/members' %>" enctype="multipart/form-data">
+        <div class="form-grid">
+          <div class="f"><label>First name</label><input name="first_name" value="<%= member ? member.first_name : '' %>" required autofocus></div>
+          <div class="f"><label>Last name</label><input name="last_name" value="<%= member ? member.last_name : '' %>" required></div>
+          <div class="f"><label>Role / position</label><input name="role" value="<%= member ? member.role : '' %>" placeholder="Driver, Crew Chief, Mechanic…"></div>
+          <div class="f">
+            <label>Credential type</label>
+            <select name="cred_type">
+              <option <%= (!member || member.cred_type==='Annual')?'selected':'' %>>Annual</option>
+              <option <%= (member && member.cred_type==='Single event')?'selected':'' %>>Single event</option>
+            </select>
+          </div>
+          <div class="f"><label>Event (if single-event)</label><input name="cred_event" value="<%= member ? member.cred_event : '' %>" placeholder="Round 2 — Calabogie"></div>
+          <div class="f">
+            <label>Headshot</label>
+            <input type="file" id="headshotInput" name="headshot" accept="image/*">
+            <div class="hint">A clear, front-facing photo — this is what prints on the credential card.</div>
+          </div>
+          <div class="f"><label>Email</label><input type="email" name="email" value="<%= member ? member.email : '' %>"></div>
+          <div class="f"><label>Phone</label><input name="phone" value="<%= member ? member.phone : '' %>"></div>
+        </div>
+
+        <% if (member && member.headshot_path) { %>
+          <div style="margin-top:16px">
+            <span class="label">Current headshot</span>
+            <div style="margin-top:8px"><span class="avatar lg"><img src="<%= member.headshot_path %>" alt=""></span></div>
+          </div>
+        <% } %>
+        <div id="photoPreview" style="margin-top:16px;display:none">
+          <span class="label">New headshot preview</span>
+          <div style="margin-top:8px"><span class="avatar lg"><img id="photoPreviewImg" alt=""></span></div>
+        </div>
+
+        <div class="form-actions">
+          <a class="btn" href="/portal">Cancel</a>
+          <button class="btn primary" type="submit"><%= member ? 'Save changes' : 'Add to roster' %></button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+<script src="/js/photo-preview.js"></script>
+<%- include('../partials/foot') %>

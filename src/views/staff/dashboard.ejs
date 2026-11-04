@@ -1,0 +1,97 @@
+<%- include('../partials/head', { title, nav, active }) %>
+<div class="page-head">
+  <div>
+    <div class="kicker"><%= EVENT_NAME %></div>
+    <h1>Team Roster</h1>
+    <div class="sub">Every team's registered members, their credential / waiver / regs status, and allowance usage.</div>
+  </div>
+  <div class="page-actions">
+    <a class="btn" href="/staff/teams">Teams &amp; Allowances</a>
+    <a class="btn" href="/staff/cards">Hard Cards</a>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="panel" style="margin-top:18px">
+    <div class="stats">
+      <div class="s-cell">
+        <span class="label">Members registered</span>
+        <div class="s-count"><em><%= totals.total %></em></div>
+      </div>
+      <div class="s-cell">
+        <span class="label">Credentials issued</span>
+        <div class="s-count cred"><em><%= totals.cred %></em> <span style="color:var(--muted);font-size:13px">/ <%= totals.total %></span></div>
+        <div class="bar cred"><span style="width:<%= totals.total ? Math.round(totals.cred/totals.total*100) : 0 %>%"></span></div>
+      </div>
+      <div class="s-cell">
+        <span class="label">Speed waivers signed</span>
+        <div class="s-count waiver"><em><%= totals.waiver %></em> <span style="color:var(--muted);font-size:13px">/ <%= totals.total %></span></div>
+        <div class="bar waiver"><span style="width:<%= totals.total ? Math.round(totals.waiver/totals.total*100) : 0 %>%"></span></div>
+      </div>
+      <div class="s-cell">
+        <span class="label">Regs acknowledged</span>
+        <div class="s-count regs"><em><%= totals.regs %></em> <span style="color:var(--muted);font-size:13px">/ <%= totals.total %></span></div>
+        <div class="bar regs"><span style="width:<%= totals.total ? Math.round(totals.regs/totals.total*100) : 0 %>%"></span></div>
+      </div>
+    </div>
+    <div class="panel-body" style="padding:14px 20px">
+      <form method="get" action="/staff" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+        <input type="search" name="q" value="<%= q %>" placeholder="Search name, role or team…"
+          style="flex:1;min-width:220px;background:var(--panel-2);border:1px solid var(--line);border-radius:999px;padding:9px 14px;color:var(--text)">
+        <select name="filter" style="background:var(--panel-2);border:1px solid var(--line);border-radius:999px;padding:9px 14px;color:var(--text)">
+          <option value="" <%= filter==='' ? 'selected' : '' %>>All members</option>
+          <option value="nocred" <%= filter==='nocred' ? 'selected' : '' %>>No credential</option>
+          <option value="nowaiver" <%= filter==='nowaiver' ? 'selected' : '' %>>No waiver</option>
+          <option value="noregs" <%= filter==='noregs' ? 'selected' : '' %>>No regs</option>
+          <option value="nocard" <%= filter==='nocard' ? 'selected' : '' %>>Card not printed</option>
+        </select>
+        <button class="btn" type="submit">Filter</button>
+        <% if (q || filter) { %><a class="btn ghost" href="/staff">Clear</a><% } %>
+      </form>
+    </div>
+  </div>
+
+  <% if (!groups.length) { %>
+    <div class="panel" style="margin-top:18px"><div class="empty">No members match. Try clearing filters, or add teams under <a href="/staff/teams">Teams &amp; Allowances</a>.</div></div>
+  <% } else { %>
+    <% groups.forEach(function(g) { %>
+      <div class="panel" style="margin-top:18px">
+        <div class="group-head">
+          <span class="tag gt-<%= g.team.group_type.toLowerCase() %>"><%= g.team.group_type %></span>
+          <span class="g-name"><%= g.team.name %></span>
+          <span class="g-count"><%= g.visible.length %> of <%= g.all.length %> shown</span>
+          <span class="g-sp"></span>
+          <% if (g.usage.over) { %>
+            <span class="g-warn" title="Over credential allowance">!</span>
+          <% } %>
+          <span class="badge">
+            Annual <%= g.usage.annualUsed %><%= g.usage.annualLimit != null ? '/' + g.usage.annualLimit : '' %>
+            &nbsp;·&nbsp; Single <%= g.usage.singleUsed %><%= g.usage.singleLimit != null ? '/' + g.usage.singleLimit : '' %>
+          </span>
+        </div>
+        <div class="rowlist">
+          <% g.visible.forEach(function(m) { %>
+            <div class="mrow">
+              <span class="avatar">
+                <% if (m.headshot_path) { %><img src="<%= m.headshot_path %>" alt=""><% } else { %><%= initials(m) %><% } %>
+              </span>
+              <a href="/staff/members/<%= m.id %>" style="text-decoration:none;color:inherit;min-width:0">
+                <div class="mr-name"><%= fullName(m) %></div>
+                <div class="mr-role"><%= m.role || '—' %><%= m.cred_type === 'Single event' ? ' · single event' : '' %></div>
+              </a>
+              <div class="mr-right">
+                <span class="pips">
+                  <span class="pip cred<%= m.cred_done ? ' on' : '' %>" title="Credential"></span>
+                  <span class="pip waiver<%= m.waiver_done ? ' on' : '' %>" title="Speed waiver"></span>
+                  <span class="pip regs<%= m.regs_done ? ' on' : '' %>" title="Regs"></span>
+                </span>
+                <a class="btn sm" href="/staff/members/<%= m.id %>">Open</a>
+              </div>
+            </div>
+          <% }) %>
+        </div>
+      </div>
+    <% }) %>
+  <% } %>
+</div>
+<%- include('../partials/foot') %>

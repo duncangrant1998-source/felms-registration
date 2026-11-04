@@ -1,0 +1,18 @@
+<%- include('../partials/head', { title }) %>
+<div class="auth-wrap">
+  <div class="auth-card">
+    <div class="m-logo">FEL</div>
+    <h1>Staff Sign In</h1>
+    <div class="sub">Credential desk &amp; registration management</div>
+    <% if (error) { %><div class="auth-error"><%= error %></div><% } %>
+    <form method="post" action="/staff/login">
+      <div class="f">
+        <label for="password">Staff password</label>
+        <input type="password" id="password" name="password" autofocus required>
+      </div>
+      <button class="btn primary" type="submit">Sign In</button>
+    </form>
+    <div class="landing-links"><a class="btn ghost" href="/">Back</a></div>
+  </div>
+</div>
+<%- include('../partials/foot') %>

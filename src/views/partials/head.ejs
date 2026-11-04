@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title><%= typeof title !== "undefined" ? title + " — FEL Motorsports" : "FEL Motorsports" %></title>
+<link rel="stylesheet" href="/css/theme.css">
+</head>
+<body>
+<% if (typeof nav !== "undefined" && nav === "staff") { %>
+  <div class="navbar">
+    <a class="markbar" href="/staff">
+      <span class="m-logo">FEL</span>
+      <span class="m-txt">Credential Desk</span>
+    </a>
+    <div class="navlinks">
+      <a href="/staff" class="<%= active === 'dashboard' ? 'on' : '' %>">Roster</a>
+      <a href="/staff/teams" class="<%= active === 'teams' ? 'on' : '' %>">Teams &amp; Allowances</a>
+      <a href="/staff/cards" class="<%= active === 'cards' ? 'on' : '' %>">Hard Cards</a>
+      <a href="/staff/credential-requests" class="<%= active === 'requests' ? 'on' : '' %>">Credential Requests</a>
+      <a href="/staff/documents" class="<%= active === 'documents' ? 'on' : '' %>">Documents</a>
+    </div>
+    <span class="spacer"></span>
+    <a class="btn sm ghost" href="/staff/logout">Sign out</a>
+  </div>
+<% } else if (typeof nav !== "undefined" && nav === "portal") { %>
+  <div class="navbar">
+    <a class="markbar" href="/portal">
+      <span class="m-logo">FEL</span>
+      <span class="m-txt">Team Portal</span>
+    </a>
+    <div class="navlinks">
+      <a href="/portal" class="<%= active === 'roster' ? 'on' : '' %>">My Roster</a>
+      <a href="/portal/credentials" class="<%= active === 'credentials' ? 'on' : '' %>">Credentials</a>
+      <a href="/portal/documents" class="<%= active === 'documents' ? 'on' : '' %>">Documents</a>
+    </div>
+    <span class="spacer"></span>
+    <a class="btn sm ghost" href="/portal/logout">Sign out</a>
+  </div>
+<% } %>

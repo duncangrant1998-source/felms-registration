@@ -1,0 +1,22 @@
+<div class="cred-card">
+  <div class="cc-stripe"></div>
+  <div class="cc-top">
+    <span class="cc-logo">FEL</span>
+    <span class="cc-event"><%= EVENT_NAME %></span>
+    <span class="cc-type <%= c.cred_type === 'Annual' ? 'annual' : 'single' %>"><%= c.cred_type === 'Annual' ? 'Annual' : 'Single Event' %></span>
+  </div>
+  <div class="cc-body">
+    <span class="cc-photo">
+      <% if (c.headshot_path) { %><img src="<%= c.headshot_path %>" alt=""><% } else { %><%= initials(c) %><% } %>
+    </span>
+    <div class="cc-id">
+      <div class="cc-name"><%= fullName(c) %></div>
+      <div class="cc-role"><%= c.role || (c.team_group_type || 'Member') %></div>
+      <div class="cc-team"><%= c.team_name %></div>
+    </div>
+  </div>
+  <div class="cc-foot">
+    <span class="cc-serial">FEL-<%= String(c.id).padStart(5,'0') %></span>
+    <span class="cc-serial"><%= c.cred_type === 'Single event' && c.cred_event ? c.cred_event : '' %></span>
+  </div>
+</div>

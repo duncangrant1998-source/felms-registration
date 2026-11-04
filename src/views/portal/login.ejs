@@ -1,0 +1,18 @@
+<%- include('../partials/head', { title }) %>
+<div class="auth-wrap">
+  <div class="auth-card">
+    <div class="m-logo">FEL</div>
+    <h1>Team Sign In</h1>
+    <div class="sub">Enter the access code FEL Motorsports gave your team to manage your roster.</div>
+    <% if (error) { %><div class="auth-error"><%= error %></div><% } %>
+    <form method="post" action="/portal/login">
+      <div class="f">
+        <label for="access_code">Team access code</label>
+        <input type="text" id="access_code" name="access_code" placeholder="FEL-7K2Q9R" autofocus required autocomplete="off">
+      </div>
+      <button class="btn primary" type="submit">Sign In</button>
+    </form>
+    <div class="landing-links"><a class="btn ghost" href="/">Back</a></div>
+  </div>
+</div>
+<%- include('../partials/foot') %>

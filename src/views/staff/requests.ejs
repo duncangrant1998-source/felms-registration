@@ -1,0 +1,44 @@
+<%- include('../partials/head', { title, nav, active }) %>
+<div class="page-head">
+  <div>
+    <div class="kicker"><%= EVENT_NAME %></div>
+    <h1>Credential Requests</h1>
+    <div class="sub">Teams that have gone over their allotted credentials and asked to purchase more. Payment links/APIs plug in here later — for now, approve and follow up with the team directly.</div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="panel" style="margin-top:18px">
+    <% if (!requests.length) { %>
+      <div class="empty">No credential requests yet.</div>
+    <% } else { %>
+      <table class="simple">
+        <thead><tr><th>Team</th><th>Type</th><th>Qty</th><th>Note</th><th>Requested</th><th>Status</th><th></th></tr></thead>
+        <tbody>
+          <% requests.forEach(function(r) { %>
+            <tr>
+              <td><%= r.team_name %></td>
+              <td><%= r.cred_type %></td>
+              <td><%= r.quantity %></td>
+              <td style="max-width:220px;overflow-wrap:anywhere"><%= r.note || '—' %></td>
+              <td><%= fmtStamp(r.created_at) %></td>
+              <td><span class="status-pill <%= r.status %>"><%= r.status %></span></td>
+              <td>
+                <form method="post" action="/staff/credential-requests/<%= r.id %>/status" style="display:flex;gap:6px">
+                  <select name="status" style="background:var(--panel-2);border:1px solid var(--line);border-radius:7px;padding:5px 8px;color:var(--text);font-size:12px">
+                    <option value="pending" <%= r.status==='pending'?'selected':'' %>>Pending</option>
+                    <option value="approved" <%= r.status==='approved'?'selected':'' %>>Approved</option>
+                    <option value="fulfilled" <%= r.status==='fulfilled'?'selected':'' %>>Fulfilled</option>
+                    <option value="cancelled" <%= r.status==='cancelled'?'selected':'' %>>Cancelled</option>
+                  </select>
+                  <button class="btn sm" type="submit">Update</button>
+                </form>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    <% } %>
+  </div>
+</div>
+<%- include('../partials/foot') %>

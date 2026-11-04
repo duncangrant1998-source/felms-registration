@@ -1,0 +1,76 @@
+<%- include('../partials/head', { title, nav, active }) %>
+<div class="page-head">
+  <div>
+    <div class="kicker"><a href="/staff" style="color:var(--muted);text-decoration:none">&larr; All teams</a></div>
+    <h1><%= fullName(member) %></h1>
+    <div class="sub"><%= team ? team.name : '—' %><%= member.role ? ' · ' + member.role : '' %></div>
+  </div>
+  <div class="page-actions">
+    <a class="btn" href="/staff/cards?team=<%= team ? team.id : '' %>">View hard card</a>
+    <form class="inline" method="post" action="/staff/members/<%= member.id %>/delete" onsubmit="return confirm('Remove this member?');">
+      <button class="btn danger" type="submit">Remove</button>
+    </form>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="panel" style="margin-top:18px">
+    <div class="panel-body" style="display:flex;gap:20px;align-items:center;flex-wrap:wrap">
+      <span class="avatar lg">
+        <% if (member.headshot_path) { %><img src="<%= member.headshot_path %>" alt=""><% } else { %><%= initials(member) %><% } %>
+      </span>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <span class="tag <%= member.cred_type === 'Annual' ? 'cred-annual' : 'cred-single' %>"><%= member.cred_type %></span>
+        <% if (team) { %><span class="tag gt-<%= team.group_type.toLowerCase() %>"><%= team.group_type %></span><% } %>
+      </div>
+    </div>
+
+    <div class="pf-status">
+      <form class="inline" method="post" action="/staff/members/<%= member.id %>/toggle/cred" style="display:contents">
+        <button class="tcard cred<%= member.cred_done ? ' done' : '' %>" type="submit">
+          <div class="tc-top"><span class="tc-name">Credential</span><span class="tc-box"></span></div>
+          <div class="tc-state"><%= member.cred_done ? 'Issued ' + fmtStamp(member.cred_at) : 'Not yet issued' %></div>
+        </button>
+      </form>
+      <form class="inline" method="post" action="/staff/members/<%= member.id %>/toggle/waiver" style="display:contents">
+        <button class="tcard waiver<%= member.waiver_done ? ' done' : '' %>" type="submit">
+          <div class="tc-top"><span class="tc-name">Speed Waiver</span><span class="tc-box"></span></div>
+          <div class="tc-state"><%= member.waiver_done ? 'Signed ' + fmtStamp(member.waiver_at) : 'Not signed' %></div>
+        </button>
+      </form>
+      <form class="inline" method="post" action="/staff/members/<%= member.id %>/toggle/regs" style="display:contents">
+        <button class="tcard regs<%= member.regs_done ? ' done' : '' %>" type="submit">
+          <div class="tc-top"><span class="tc-name">Regs Ack.</span><span class="tc-box"></span></div>
+          <div class="tc-state"><%= member.regs_done ? 'Acknowledged ' + fmtStamp(member.regs_at) : 'Not acknowledged' %></div>
+        </button>
+      </form>
+    </div>
+
+    <div class="panel-body">
+      <form method="post" action="/staff/members/<%= member.id %>/update" enctype="multipart/form-data">
+        <div class="form-grid">
+          <div class="f"><label>First name</label><input name="first_name" value="<%= member.first_name %>" required></div>
+          <div class="f"><label>Last name</label><input name="last_name" value="<%= member.last_name %>" required></div>
+          <div class="f"><label>Role / position</label><input name="role" value="<%= member.role %>" placeholder="Driver"></div>
+          <div class="f">
+            <label>Credential type</label>
+            <select name="cred_type">
+              <option <%= member.cred_type==='Annual'?'selected':'' %>>Annual</option>
+              <option <%= member.cred_type==='Single event'?'selected':'' %>>Single event</option>
+            </select>
+          </div>
+          <div class="f"><label>Event (if single)</label><input name="cred_event" value="<%= member.cred_event %>"></div>
+          <div class="f"><label>Headshot</label><input type="file" name="headshot" accept="image/*"></div>
+          <div class="f"><label>Email</label><input type="email" name="email" value="<%= member.email %>"></div>
+          <div class="f"><label>Phone</label><input name="phone" value="<%= member.phone %>"></div>
+          <div class="f"><label>Emergency contact name</label><input name="emg_name" value="<%= member.emg_name %>"></div>
+          <div class="f"><label>Emergency contact relation</label><input name="emg_relation" value="<%= member.emg_relation %>"></div>
+          <div class="f"><label>Emergency contact phone</label><input name="emg_phone" value="<%= member.emg_phone %>"></div>
+          <div class="f wide"><label>Notes</label><textarea name="notes"><%= member.notes %></textarea></div>
+        </div>
+        <div class="form-actions"><button class="btn primary" type="submit">Save changes</button></div>
+      </form>
+    </div>
+  </div>
+</div>
+<%- include('../partials/foot') %>

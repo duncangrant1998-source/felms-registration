@@ -1,0 +1,53 @@
+<%- include('../partials/head', { title, nav, active }) %>
+<div class="page-head">
+  <div>
+    <div class="kicker"><%= EVENT_NAME %></div>
+    <h1>Weekend Documents</h1>
+    <div class="sub">Sporting regs, technical regs, speed waiver and anything else teams need — visible to staff and teams alike.</div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="panel" style="margin-top:18px">
+    <div class="panel-head"><h2>Upload a document</h2></div>
+    <div class="panel-body">
+      <form method="post" action="/staff/documents" enctype="multipart/form-data">
+        <div class="form-grid">
+          <div class="f"><label>Title</label><input name="title" placeholder="2026 Sporting Regulations" required></div>
+          <div class="f">
+            <label>Category</label>
+            <select name="category">
+              <option>Sporting Regulations</option>
+              <option>Technical Regulations</option>
+              <option>Speed Waiver</option>
+              <option>Other</option>
+            </select>
+          </div>
+          <div class="f wide"><label>File</label><input type="file" name="file" required></div>
+        </div>
+        <div class="form-actions"><button class="btn primary" type="submit">Upload</button></div>
+      </form>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-top:18px">
+    <div class="panel-head"><h2>Library</h2></div>
+    <% if (!documents.length) { %>
+      <div class="empty">No documents uploaded yet.</div>
+    <% } %>
+    <% documents.forEach(function(d) { %>
+      <div class="doc-row">
+        <span class="doc-icon">📄</span>
+        <div style="flex:1;min-width:0">
+          <div class="doc-title"><%= d.title %></div>
+          <div class="doc-meta"><%= d.category %> · uploaded <%= fmtDate(d.uploaded_at) %></div>
+        </div>
+        <a class="btn sm" href="<%= d.storage_path %>" target="_blank" rel="noopener">View</a>
+        <form class="inline" method="post" action="/staff/documents/<%= d.id %>/delete" onsubmit="return confirm('Delete this document?');">
+          <button class="btn sm danger" type="submit">Delete</button>
+        </form>
+      </div>
+    <% }) %>
+  </div>
+</div>
+<%- include('../partials/foot') %>

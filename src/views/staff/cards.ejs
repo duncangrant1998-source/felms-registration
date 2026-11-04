@@ -1,0 +1,54 @@
+<%- include('../partials/head', { title, nav, active }) %>
+<div class="page-head">
+  <div>
+    <div class="kicker"><%= EVENT_NAME %></div>
+    <h1>Hard Cards</h1>
+    <div class="sub">Credential cards are generated automatically from each member's name, headshot and team as they register — print them off ahead of the track.</div>
+  </div>
+  <div class="page-actions no-print">
+    <button class="btn primary" onclick="window.print()">Print this sheet</button>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="panel no-print" style="margin-top:18px">
+    <div class="panel-body">
+      <form method="get" action="/staff/cards" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+        <select name="team" style="background:var(--panel-2);border:1px solid var(--line);border-radius:999px;padding:9px 14px;color:var(--text)">
+          <option value="">All teams</option>
+          <% teams.forEach(function(t) { %>
+            <option value="<%= t.id %>" <%= String(teamId)===String(t.id) ? 'selected' : '' %>><%= t.name %></option>
+          <% }) %>
+        </select>
+        <label style="display:flex;align-items:center;gap:7px;font-size:13px;color:var(--text-2)">
+          <input type="checkbox" name="unprinted" value="1" <%= onlyUnprinted ? 'checked' : '' %>> Only cards not yet printed
+        </label>
+        <button class="btn" type="submit">Apply</button>
+      </form>
+    </div>
+  </div>
+
+  <% if (!cards.length) { %>
+    <div class="panel" style="margin-top:18px"><div class="empty">No members match these filters.</div></div>
+  <% } else { %>
+    <form method="post" action="/staff/cards/mark-printed">
+      <div class="panel no-print" style="margin-top:18px">
+        <div class="panel-body" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+          <label style="font-size:13px;color:var(--text-2)"><%= cards.length %> card<%= cards.length===1?'':'s' %> shown</label>
+          <button class="btn" type="submit">Mark all shown as printed</button>
+        </div>
+      </div>
+      <div class="card-grid">
+        <% cards.forEach(function(c) { %>
+          <div>
+            <%- include('../partials/card', { c, fullName, initials }) %>
+            <label style="display:flex;gap:6px;align-items:center;margin-top:6px;font-size:11px;color:var(--muted)" class="no-print">
+              <input type="checkbox" name="ids" value="<%= c.id %>" checked> <%= c.card_printed ? 'Already printed' : 'Not yet printed' %>
+            </label>
+          </div>
+        <% }) %>
+      </div>
+    </form>
+  <% } %>
+</div>
+<%- include('../partials/foot') %>

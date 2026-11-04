@@ -1,0 +1,85 @@
+<%- include('../partials/head', { title, nav, active }) %>
+<div class="page-head">
+  <div>
+    <div class="kicker"><%= EVENT_NAME %></div>
+    <h1>Teams &amp; Allowances</h1>
+    <div class="sub">Create a team to generate its access code, then hand that code to the team so they can register their own roster in the Team Portal.</div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="panel" style="margin-top:18px">
+    <div class="panel-head"><h2>Add a team</h2></div>
+    <div class="panel-body">
+      <form method="post" action="/staff/teams">
+        <div class="form-grid">
+          <div class="f"><label>Team / org name</label><input name="name" required placeholder="Apex Racing"></div>
+          <div class="f">
+            <label>Type</label>
+            <select name="group_type">
+              <option>Team</option><option>Sponsor</option><option>Partner</option>
+            </select>
+          </div>
+          <div class="f"><label>Annual credential limit</label><input type="number" min="0" name="annual_limit" placeholder="6"></div>
+          <div class="f"><label>Single-event credential limit</label><input type="number" min="0" name="single_limit" placeholder="Leave blank for no limit"></div>
+        </div>
+        <div class="form-actions"><button class="btn primary" type="submit">Create Team</button></div>
+      </form>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-top:18px">
+    <div class="panel-head"><h2>All teams</h2></div>
+    <div class="panel-body">
+      <% if (!rows.length) { %>
+        <div class="empty">No teams yet — add one above to generate its access code.</div>
+      <% } %>
+      <% rows.forEach(function(r) { %>
+        <div class="lim-row<%= r.usage.over ? ' over' : '' %>">
+          <div>
+            <div class="lim-name"><%= r.team.name %> <span class="tag gt-<%= r.team.group_type.toLowerCase() %>"><%= r.team.group_type %></span></div>
+            <div class="lim-code">Access code: <b><%= r.team.access_code %></b></div>
+          </div>
+          <div class="lim-f">
+            <label>Annual</label>
+            <span class="lim-used<%= r.usage.annualOver ? ' over' : '' %>"><%= r.usage.annualUsed %><%= r.team.annual_limit != null ? '/' + r.team.annual_limit : ' / ∞' %></span>
+          </div>
+          <div class="lim-f">
+            <label>Single</label>
+            <span class="lim-used<%= r.usage.singleOver ? ' over' : '' %>"><%= r.usage.singleUsed %><%= r.team.single_limit != null ? '/' + r.team.single_limit : ' / ∞' %></span>
+          </div>
+          <div style="display:flex;gap:6px">
+            <form class="inline" method="post" action="/staff/teams/<%= r.team.id %>/regen-code" onsubmit="return confirm('Regenerate this team\'s access code? Their old code will stop working.');">
+              <button class="btn sm" type="submit">New code</button>
+            </form>
+          </div>
+        </div>
+        <details style="margin:-4px 0 14px">
+          <summary class="hint" style="cursor:pointer">Edit name / limits</summary>
+          <form method="post" action="/staff/teams/<%= r.team.id %>/update" style="margin-top:10px">
+            <div class="form-grid">
+              <div class="f"><label>Name</label><input name="name" value="<%= r.team.name %>" required></div>
+              <div class="f">
+                <label>Type</label>
+                <select name="group_type">
+                  <option <%= r.team.group_type==='Team'?'selected':'' %>>Team</option>
+                  <option <%= r.team.group_type==='Sponsor'?'selected':'' %>>Sponsor</option>
+                  <option <%= r.team.group_type==='Partner'?'selected':'' %>>Partner</option>
+                </select>
+              </div>
+              <div class="f"><label>Annual limit</label><input type="number" min="0" name="annual_limit" value="<%= r.team.annual_limit != null ? r.team.annual_limit : '' %>"></div>
+              <div class="f"><label>Single-event limit</label><input type="number" min="0" name="single_limit" value="<%= r.team.single_limit != null ? r.team.single_limit : '' %>"></div>
+            </div>
+            <div class="form-actions">
+              <button class="btn primary" type="submit">Save</button>
+            </div>
+          </form>
+          <form class="inline" method="post" action="/staff/teams/<%= r.team.id %>/delete" onsubmit="return confirm('Delete this team and ALL of its registered members? This cannot be undone.');">
+            <button class="btn danger sm" type="submit" style="margin-top:8px">Delete team</button>
+          </form>
+        </details>
+      <% }) %>
+    </div>
+  </div>
+</div>
+<%- include('../partials/foot') %>
