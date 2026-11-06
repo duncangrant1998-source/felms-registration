@@ -1,0 +1,53 @@
+<%- include('../partials/head', { title, nav, active }) %>
+<div class="page-head">
+  <div>
+    <div class="kicker"><%= EVENT_NAME %></div>
+    <h1>My Roster</h1>
+    <div class="sub">Your full team roster for the season — add drivers and crew here once. Use Weekend Roster to choose who's attending each race weekend.</div>
+  </div>
+  <div class="page-actions">
+    <a class="btn primary" href="/portal/members/new">Add Team Member</a>
+  </div>
+</div>
+
+<div class="wrap">
+  <% if (flash) { %>
+    <div class="flash success" style="margin-top:18px">
+      <% if (flash==='added') { %>Team member added.<% } %>
+      <% if (flash==='updated') { %>Team member updated.<% } %>
+      <% if (flash==='removed') { %>Team member removed.<% } %>
+    </div>
+  <% } %>
+
+  <div class="panel" style="margin-top:18px">
+    <div class="panel-head"><h2>Roster (<%= members.length %>)</h2></div>
+    <% if (!members.length) { %>
+      <div class="empty">No team members yet. Click <b>Add Team Member</b> to get started.</div>
+    <% } %>
+    <div class="rowlist">
+      <% members.forEach(function(m) { %>
+        <div class="mrow">
+          <span class="avatar">
+            <% if (m.headshot_path) { %><img src="<%= m.headshot_path %>" alt=""><% } else { %><%= initials(m) %><% } %>
+          </span>
+          <div style="min-width:0">
+            <div class="mr-name"><%= fullName(m) %></div>
+            <div class="mr-role"><%= m.role || '—' %><%= m.cred_type === 'Single event' ? ' · single event' : '' %></div>
+          </div>
+          <div class="mr-right">
+            <span class="pips">
+              <span class="pip cred<%= m.cred_done ? ' on' : '' %>" title="Credential issued"></span>
+              <span class="pip waiver<%= m.waiver_done ? ' on' : '' %>" title="Speed waiver"></span>
+              <span class="pip regs<%= m.regs_done ? ' on' : '' %>" title="Regs acknowledged"></span>
+            </span>
+            <a class="btn sm" href="/portal/members/<%= m.id %>/edit">Edit</a>
+            <form class="inline" method="post" action="/portal/members/<%= m.id %>/delete" onsubmit="return confirm('Remove this team member? This also removes them from any weekend rosters.');">
+              <button class="btn sm danger" type="submit">Remove</button>
+            </form>
+          </div>
+        </div>
+      <% }) %>
+    </div>
+  </div>
+</div>
+<%- include('../partials/foot') %>
