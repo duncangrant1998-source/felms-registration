@@ -6,30 +6,31 @@
    same left-rail navigation, same chamfered primary button.
    ========================================================================== */
 :root{
-  --red:        #C52527;
-  --red-hi:     #DE2F34;
+  /* --- OS app palette, same names/roles as --felm-* in the main app --- */
+  --red:        #C52527;   /* felm-red */
+  --red-hi:     #DE2F34;   /* felm-red-hi — gradient top / hover */
   --red-dark:   #8E1C1E;
-  --red-text:   #FF454B;
+  --red-text:   #FF454B;   /* felm-red-text — active nav / links */
   --danger:     #FF7B80;
 
-  --blue:       #1F6BFF;
+  --blue:       #1F6BFF;   /* felm-flag-blue */
   --blue-dark:  #15479E;
-  --green:      #00D45E;
+  --green:      #00D45E;   /* felm-flag-green */
   --green-dark: #00913F;
-  --amber:      #FFD200;
+  --amber:      #FFD200;   /* felm-flag-yellow */
   --violet:     #8B6CF0;
 
-  --ink:        #060506;
-  --panel:      #171415;
-  --panel-2:    #221E20;
-  --panel-3:    #0E0C0D;
-  --line:       #2B2628;
+  --ink:        #060506;   /* felm-bg */
+  --panel:      #171415;   /* felm-s1 */
+  --panel-2:    #221E20;   /* felm-s2 */
+  --panel-3:    #0E0C0D;   /* felm-s3 */
+  --line:       #2B2628;   /* felm-line */
   --line-soft:  rgba(43,38,40,.65);
-  --line-2:     #6B6768;
+  --line-2:     #6B6768;   /* felm-line2 */
 
-  --text:       #FFFFFF;
-  --text-2:     #B7B8BB;
-  --muted:      #9A9B9E;
+  --text:       #FFFFFF;   /* felm-ink */
+  --text-2:     #B7B8BB;   /* felm-ink2 */
+  --muted:      #9A9B9E;   /* felm-ink3 */
 
   --font-display: "Barlow Condensed", "FELM Cond", "Avenir Next Condensed", "Arial Narrow", sans-serif;
   --font-body:    "Inter", "Avenir Next", "Avenir", system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -37,7 +38,7 @@
 
   --radius:     10px;
   --radius-sm:  6px;
-  --pill:       6px;
+  --pill:       6px;        /* the OS app does not use true pill shapes */
   --sidebar-w:  232px;
   --topbar-h:   60px;
   --shadow:     0 1px 2px rgba(0,0,0,.5), 0 8px 24px rgba(0,0,0,.45);
@@ -65,6 +66,9 @@ svg{display:block}
 .kicker{font-family:var(--font-display);font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
 .label{font-family:var(--font-display);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
 
+/* ==========================================================================
+   SHELL — left rail + topbar (matches the OS app's .felm-side / .felm-context)
+   ========================================================================== */
 .felm-shell{display:flex;min-height:100vh}
 
 .felm-side{
@@ -133,6 +137,49 @@ svg{display:block}
 }
 .felm-content{flex:1;padding-bottom:56px;min-width:0}
 
+/* ==========================================================================
+   RACE WEEKEND PICKER (topbar)
+   ========================================================================== */
+.felm-eventpick{position:relative;margin-right:auto;margin-left:4px}
+.felm-eventpick-sum{
+  list-style:none;cursor:pointer;display:flex;align-items:center;gap:10px;
+  padding:7px 14px;border:.8px solid var(--line-2);border-radius:var(--radius-sm);
+  background:var(--panel-3);user-select:none;
+}
+.felm-eventpick-sum::-webkit-details-marker{display:none}
+.felm-eventpick-sum::marker{content:""}
+.felm-eventpick-sum .ep-round{font-family:var(--font-display);font-weight:800;font-size:13px;
+  letter-spacing:.03em;color:var(--red-text);white-space:nowrap}
+.felm-eventpick-sum .ep-title{font-family:var(--font-display);font-weight:700;font-size:13px;
+  letter-spacing:.02em;color:#fff;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px}
+.felm-eventpick-sum .ep-chev{width:14px;height:14px;stroke:var(--text-2);flex:0 0 auto;transition:transform .15s ease}
+.felm-eventpick[open] .ep-chev{transform:rotate(180deg)}
+.felm-eventpick[open] .felm-eventpick-sum{border-color:#fff}
+
+.felm-eventpick-panel{
+  position:absolute;top:calc(100% + 10px);left:0;z-index:40;
+  width:min(620px,calc(100vw - 48px));
+  background:var(--panel);border:.8px solid var(--line);border-radius:var(--radius);
+  padding:18px;box-shadow:var(--shadow-2);
+}
+.ep-panel-head{font-family:var(--font-display);font-weight:700;font-size:12px;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--muted);margin-bottom:12px}
+.ep-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:10px}
+.ep-card-form{display:contents}
+.ep-card{
+  display:flex;flex-direction:column;gap:5px;align-items:flex-start;text-align:left;
+  background:var(--panel-2);border:.8px solid var(--line);border-radius:var(--radius-sm);
+  padding:12px 12px 13px;cursor:pointer;width:100%;color:var(--text);font-family:inherit;
+  transition:border-color .14s ease,background .14s ease;
+}
+.ep-card:hover{border-color:var(--line-2)}
+.ep-card.active{border-color:var(--red-text);background:var(--panel)}
+.ep-card-round{font-family:var(--font-display);font-weight:800;font-size:19px;color:#fff;letter-spacing:.01em}
+.ep-card.active .ep-card-round{color:var(--red-text)}
+.ep-card-title{font-size:11px;font-weight:700;letter-spacing:.02em;text-transform:uppercase;
+  color:var(--text-2);line-height:1.3}
+.ep-card-date{font-size:11px;color:var(--muted)}
+
 .felm-subnav{display:flex;flex-wrap:wrap;gap:8px;padding:18px 28px 0}
 .sn-link{
   font-family:var(--font-display);font-size:13px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;
@@ -143,6 +190,9 @@ svg{display:block}
 .sn-link:hover{color:#fff;border-color:#fff}
 .sn-link.active{background:var(--panel);border-color:var(--red-text);color:var(--red-text)}
 
+/* ==========================================================================
+   BUTTONS
+   ========================================================================== */
 .btn{
   font-family:var(--font-display);font-size:13px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;
   background:transparent;color:var(--text);
@@ -166,6 +216,9 @@ svg{display:block}
 .btn[disabled]{opacity:.35;cursor:not-allowed}
 form.inline{display:inline}
 
+/* ==========================================================================
+   LAYOUT
+   ========================================================================== */
 .wrap{max-width:1180px;margin:0 auto;padding:0 28px}
 .page-head{margin:28px auto 0;max-width:1180px;padding:0 28px;
   display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap}
@@ -183,6 +236,9 @@ form.inline{display:inline}
   letter-spacing:.01em;text-transform:uppercase;color:var(--text)}
 .panel .panel-body{padding:20px}
 
+/* ==========================================================================
+   BADGES / TAGS / PILLS
+   ========================================================================== */
 .badge{display:inline-block;border:.8px solid var(--line-2);border-radius:var(--radius-sm);
   background:transparent;padding:6px 12px;font-family:var(--font-display);font-size:11px;font-weight:700;
   letter-spacing:.06em;text-transform:uppercase;color:var(--text-2);white-space:nowrap}
@@ -202,6 +258,9 @@ form.inline{display:inline}
 .pip.waiver.on{background:var(--blue);box-shadow:none}
 .pip.regs.on{background:var(--amber);box-shadow:none}
 
+/* ==========================================================================
+   STAT CELLS
+   ========================================================================== */
 .stats{display:grid;grid-template-columns:repeat(4,1fr);border-bottom:.8px solid var(--line-soft)}
 .stats .s-cell{padding:16px 20px;border-right:.8px solid var(--line-soft)}
 .stats .s-cell:last-child{border-right:0}
@@ -216,12 +275,18 @@ form.inline{display:inline}
 .bar.waiver span{background:var(--blue)}
 .bar.regs span{background:var(--amber)}
 
+/* ==========================================================================
+   AVATAR / HEADSHOT
+   ========================================================================== */
 .avatar{width:40px;height:40px;border-radius:var(--radius-sm);flex:0 0 auto;overflow:hidden;
   background:var(--panel-2);display:flex;align-items:center;justify-content:center;
   font-family:var(--font-display);font-size:13px;font-weight:700;color:var(--text-2);border:.8px solid var(--line)}
 .avatar img{width:100%;height:100%;object-fit:cover;display:block}
 .avatar.lg{width:96px;height:96px;border-radius:var(--radius);font-size:30px}
 
+/* ==========================================================================
+   ROSTER / LIST ROWS
+   ========================================================================== */
 .rowlist{display:flex;flex-direction:column}
 .mrow{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;
   padding:13px;border-bottom:.8px solid var(--line-soft)}
@@ -241,6 +306,9 @@ form.inline{display:inline}
 
 .empty{padding:44px 20px;text-align:center;color:var(--text-2);font-size:14px;line-height:1.6}
 
+/* ==========================================================================
+   FORMS
+   ========================================================================== */
 .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 .form-grid .f{display:flex;flex-direction:column;gap:6px;min-width:0}
 .form-grid .f.wide{grid-column:1 / -1}
@@ -255,12 +323,18 @@ form.inline{display:inline}
 .form-actions{display:flex;gap:10px;margin-top:18px;justify-content:flex-end}
 .hint{font-size:12.5px;color:var(--text-2);margin-top:4px}
 
+/* ==========================================================================
+   INFO GRID (read-only detail)
+   ========================================================================== */
 .info-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
 .info-grid.three{grid-template-columns:repeat(3,1fr)}
 .info{display:flex;flex-direction:column;gap:4px;min-width:0}
 .info .i-val{font-size:14px;color:var(--text);overflow-wrap:anywhere;line-height:1.45}
 .info .i-empty{color:var(--muted);font-style:italic}
 
+/* ==========================================================================
+   STATUS TOGGLE CARDS
+   ========================================================================== */
 .pf-status{display:grid;grid-template-columns:repeat(3,1fr);border-top:.8px solid var(--line-soft);
   border-bottom:.8px solid var(--line-soft)}
 .tcard{padding:18px 20px;border-right:.8px solid var(--line-soft);
@@ -281,12 +355,18 @@ form.inline{display:inline}
 .tcard.regs.done{background:rgba(255,210,0,.08)}
 .tcard.regs.done .tc-box{background:var(--amber);border-color:#2a2400}
 
+/* ==========================================================================
+   TABLES
+   ========================================================================== */
 table.simple{width:100%;border-collapse:collapse}
 table.simple th{font-family:var(--font-display);font-size:11px;font-weight:700;letter-spacing:.05em;
   text-transform:uppercase;color:var(--muted);text-align:left;padding:10px 14px;border-bottom:.8px solid var(--line)}
 table.simple td{padding:12px 14px;border-bottom:.8px solid var(--line-soft);font-size:14px;vertical-align:middle}
 table.simple tr:last-child td{border-bottom:0}
 
+/* ==========================================================================
+   ALLOWANCE ROWS
+   ========================================================================== */
 .lim-row{display:grid;grid-template-columns:1fr auto auto auto;gap:12px;align-items:center;
   padding:12px 14px;border:.8px solid var(--line);border-radius:var(--radius-sm);background:var(--panel-2);margin-bottom:10px}
 .lim-row.over{border-color:rgba(197,37,39,.6);background:rgba(197,37,39,.08)}
@@ -299,6 +379,9 @@ table.simple tr:last-child td{border-bottom:0}
 .lim-used{font-size:11px;color:var(--text-2)}
 .lim-used.over{color:var(--red-text);font-weight:700}
 
+/* ==========================================================================
+   STATUS PILLS FOR REQUESTS
+   ========================================================================== */
 .status-pill{font-family:var(--font-display);font-size:11px;font-weight:700;letter-spacing:.05em;
   text-transform:uppercase;padding:4px 10px;border-radius:var(--radius-sm);display:inline-block;border:.8px solid transparent}
 .status-pill.pending{background:rgba(255,210,0,.12);color:#FFD200;border-color:rgba(255,210,0,.35)}
@@ -306,6 +389,9 @@ table.simple tr:last-child td{border-bottom:0}
 .status-pill.fulfilled{background:rgba(0,212,94,.12);color:#3FE888;border-color:rgba(0,212,94,.35)}
 .status-pill.cancelled{background:rgba(255,69,75,.12);color:var(--red-text);border-color:rgba(255,69,75,.35)}
 
+/* ==========================================================================
+   DOCUMENTS LIST
+   ========================================================================== */
 .doc-row{display:flex;align-items:center;gap:14px;padding:15px 18px;border-bottom:.8px solid var(--line-soft)}
 .doc-row:last-child{border-bottom:0}
 .doc-icon{width:38px;height:38px;border-radius:var(--radius-sm);background:var(--panel-2);border:.8px solid var(--line);
@@ -313,6 +399,9 @@ table.simple tr:last-child td{border-bottom:0}
 .doc-title{font-family:var(--font-body);font-weight:700;font-size:14.5px}
 .doc-meta{font-size:12px;color:var(--text-2);margin-top:2px}
 
+/* ==========================================================================
+   LOGIN CARD
+   ========================================================================== */
 .auth-wrap{max-width:420px;margin:12vh auto 0;padding:0 20px}
 .auth-card{background:var(--panel);border:.8px solid var(--line);border-radius:var(--radius);
   box-shadow:inset 0 1px 0 rgba(255,255,255,.06), var(--shadow-2);padding:32px 28px}
@@ -335,11 +424,17 @@ table.simple tr:last-child td{border-bottom:0}
 .landing-links{display:flex;gap:14px;flex-wrap:wrap;margin-top:22px}
 .landing-links a{flex:1;min-width:160px;justify-content:center}
 
+/* ==========================================================================
+   ALERTS / TOASTS
+   ========================================================================== */
 .flash{padding:12px 16px;border-radius:var(--radius-sm);font-size:13.5px;margin-bottom:16px;
   border:.8px solid var(--line)}
 .flash.success{background:rgba(0,212,94,.1);border-color:rgba(0,212,94,.4);color:#3FE888}
 .flash.info{background:rgba(31,107,255,.08);border-color:rgba(31,107,255,.35);color:#8FB4FF}
 
+/* ==========================================================================
+   CREDENTIAL HARD CARD
+   ========================================================================== */
 .card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(324px,1fr));gap:18px;padding:20px}
 .cred-card{
   width:324px;height:204px;border-radius:14px;position:relative;overflow:hidden;
@@ -374,6 +469,9 @@ table.simple tr:last-child td{border-bottom:0}
   display:flex;justify-content:space-between;align-items:center}
 .cred-card .cc-serial{font-family:var(--font-mono);font-size:9px;color:var(--muted);letter-spacing:.05em}
 
+/* ==========================================================================
+   RESPONSIVE
+   ========================================================================== */
 @media (max-width:980px){
   .felm-side{position:fixed;left:0;top:0;z-index:40;transform:translateX(-100%);transition:transform .2s ease}
   .felm-side.open{transform:translateX(0)}
@@ -384,8 +482,15 @@ table.simple tr:last-child td{border-bottom:0}
   .stats .s-cell,.pf-status .tcard{border-right:0;border-bottom:.8px solid var(--line-soft)}
   .page-head{flex-direction:column;align-items:flex-start}
   .wrap,.page-head{padding-left:18px;padding-right:18px}
+  .felm-topbar{height:auto;flex:0 0 auto;flex-wrap:wrap;padding:12px 18px;gap:10px}
+  .felm-eventpick{order:3;width:100%;margin-left:0}
+  .felm-eventpick-sum .ep-title{max-width:none}
+  .felm-eventpick-panel{width:calc(100vw - 36px)}
 }
 
+/* ==========================================================================
+   PRINT
+   ========================================================================== */
 @media print{
   @page{size:letter;margin:10mm}
   html,body{background:#fff !important;color:#111 !important}
