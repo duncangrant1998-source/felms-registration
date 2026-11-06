@@ -54,8 +54,16 @@ router.get("/", async (req, res, next) => {
 
     const eventId = res.locals.currentEvent ? res.locals.currentEvent.id : null;
     const { rows: teams } = await pool.query("SELECT * FROM teams ORDER BY name ASC");
+
+    // Allowance usage is based on the team's full season roster, not just who's attending this weekend.
+    const { rows: allMembersFull } = await pool.query("SELECT * FROM members");
+    const fullByTeam = {};
+    for (const m of allMembersFull) (fullByTeam[m.team_id] = fullByTeam[m.team_id] || []).push(m);
+
     const { rows: members } = await pool.query(
-      "SELECT * FROM members WHERE event_id = $1 ORDER BY last_name ASC, first_name ASC", [eventId]
+      `SELECT members.* FROM members
+       JOIN event_roster ON event_roster.member_id = members.id AND event_roster.event_id = $1
+       ORDER BY members.last_name ASC, members.first_name ASC`, [eventId]
     );
 
     const membersByTeam = {};
@@ -78,7 +86,7 @@ router.get("/", async (req, res, next) => {
 
     const groups = teams.map((team) => {
       const all = membersByTeam[team.id] || [];
-      const usage = teamUsage(team, all);
+      const usage = teamUsage(team, fullByTeam[team.id] || []);
       const visible = all.filter((m) => matchesSearch(m, team) && matchesFilter(m));
       return { team, all, visible, usage };
     }).filter((g) => g.visible.length > 0 || (!q && !filter));
@@ -89,7 +97,7 @@ router.get("/", async (req, res, next) => {
       cred: allMembers.filter((m) => m.cred_done).length,
       waiver: allMembers.filter((m) => m.waiver_done).length,
       regs: allMembers.filter((m) => m.regs_done).length,
-      overTeams: teams.filter((t) => teamUsage(t, membersByTeam[t.id] || []).over).length
+      overTeams: teams.filter((t) => teamUsage(t, fullByTeam[t.id] || []).over).length
     };
 
     res.render("staff/dashboard", {
@@ -149,7 +157,7 @@ router.post("/members/:id/update", photoUpload.single("headshot"), async (req, r
 router.post("/members/:id/toggle/:field", async (req, res, next) => {
   try {
     const field = req.params.field;
-    if (["cred", "waiver", "regs"].includes(field) === false) return res.status(400).send("Bad field");
+    if (!["cred", "waiver", "regs"].includes(field)) return res.status(400).send("Bad field");
     const { rows } = await pool.query("SELECT * FROM members WHERE id = $1", [req.params.id]);
     const m = rows[0];
     if (!m) return res.status(404).render("error", { title: "Not found", message: "Member not found." });
@@ -175,9 +183,8 @@ router.post("/members/:id/delete", async (req, res, next) => {
 // ---------- Teams & allowances ----------
 router.get("/teams", async (req, res, next) => {
   try {
-    const eventId = res.locals.currentEvent ? res.locals.currentEvent.id : null;
     const { rows: teams } = await pool.query("SELECT * FROM teams ORDER BY name ASC");
-    const { rows: members } = await pool.query("SELECT * FROM members WHERE event_id = $1", [eventId]);
+    const { rows: members } = await pool.query("SELECT * FROM members");
     const membersByTeam = {};
     for (const m of members) (membersByTeam[m.team_id] = membersByTeam[m.team_id] || []).push(m);
     const rows = teams.map((team) => ({ team, usage: teamUsage(team, membersByTeam[team.id] || []) }));
@@ -230,6 +237,40 @@ router.post("/teams/:id/delete", async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// ---------- Team roster detail: full roster, weekend attendance, and the change log ----------
+router.get("/teams/:id/roster", async (req, res, next) => {
+  try {
+    const { rows: teamRows } = await pool.query("SELECT * FROM teams WHERE id = $1", [req.params.id]);
+    const team = teamRows[0];
+    if (!team) return res.status(404).render("error", { title: "Not found", message: "Team not found." });
+
+    const { rows: members } = await pool.query(
+      "SELECT * FROM members WHERE team_id = $1 ORDER BY last_name ASC, first_name ASC", [team.id]
+    );
+
+    const { rows: rosterRows } = await pool.query(
+      `SELECT event_roster.event_id, event_roster.member_id FROM event_roster
+       JOIN members ON members.id = event_roster.member_id WHERE members.team_id = $1`, [team.id]
+    );
+    const attendingByEvent = {};
+    for (const r of rosterRows) {
+      (attendingByEvent[r.event_id] = attendingByEvent[r.event_id] || new Set()).add(r.member_id);
+    }
+
+    const { rows: log } = await pool.query(
+      `SELECT event_roster_log.*, events.round_label, events.title AS event_title
+       FROM event_roster_log JOIN events ON events.id = event_roster_log.event_id
+       WHERE event_roster_log.team_id = $1
+       ORDER BY event_roster_log.changed_at DESC LIMIT 200`, [team.id]
+    );
+
+    res.render("staff/team-roster", {
+      title: team.name, nav: "staff", active: "teams",
+      team, members, attendingByEvent, log, fullName, initials, fmtStamp
+    });
+  } catch (err) { next(err); }
+});
+
 // ---------- Hard cards ----------
 router.get("/cards", async (req, res, next) => {
   try {
@@ -237,7 +278,10 @@ router.get("/cards", async (req, res, next) => {
     const onlyUnprinted = req.query.unprinted === "1";
     const eventId = res.locals.currentEvent ? res.locals.currentEvent.id : null;
     let sql = `SELECT members.*, teams.name AS team_name, teams.group_type AS team_group_type
-               FROM members JOIN teams ON teams.id = members.team_id WHERE members.event_id = $1`;
+               FROM members
+               JOIN teams ON teams.id = members.team_id
+               JOIN event_roster ON event_roster.member_id = members.id AND event_roster.event_id = $1
+               WHERE 1=1`;
     const params = [eventId];
     if (teamId) { params.push(teamId); sql += ` AND members.team_id = $${params.length}`; }
     if (onlyUnprinted) sql += ` AND members.card_printed = false`;
@@ -307,7 +351,7 @@ router.get("/credential-requests", async (req, res, next) => {
 router.post("/credential-requests/:id/status", async (req, res, next) => {
   try {
     const { status } = req.body;
-    if (["pending", "approved", "fulfilled", "cancelled"].includes(status) === false) return res.status(400).send("Bad status");
+    if (!["pending", "approved", "fulfilled", "cancelled"].includes(status)) return res.status(400).send("Bad status");
     await pool.query("UPDATE credential_requests SET status=$1, updated_at=now() WHERE id=$2", [status, req.params.id]);
     res.redirect("/staff/credential-requests");
   } catch (err) { next(err); }
