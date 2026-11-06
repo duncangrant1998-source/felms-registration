@@ -4,7 +4,7 @@ const fs = require("fs");
 const { pool } = require("../db");
 const { requireTeam } = require("../auth");
 const { photoUpload, PHOTO_DIR } = require("../upload");
-const { fullName, initials, fmtDate, teamUsage } = require("../utils");
+const { fullName, initials, fmtDate } = require("../utils");
 
 const router = express.Router();
 
@@ -36,6 +36,35 @@ router.use(requireTeam);
 async function loadTeam(req) {
   const { rows } = await pool.query("SELECT * FROM teams WHERE id = $1", [req.session.teamId]);
   return rows[0];
+}
+
+// Annual credentials are counted per weekend (who's actually attending this one);
+// single-event credentials are counted across the whole season, since a team burns
+// one single-event credential each time a member attends a different weekend.
+async function creditUsage(team, eventId) {
+  const { rows: attending } = await pool.query(
+    `SELECT members.cred_type FROM members
+     JOIN event_roster ON event_roster.member_id = members.id AND event_roster.event_id = $1
+     WHERE members.team_id = $2`,
+    [eventId, team.id]
+  );
+  const annualUsed = attending.filter((m) => m.cred_type === "Annual").length;
+
+  const { rows: singleRows } = await pool.query(
+    `SELECT COUNT(*)::int AS c FROM event_roster
+     JOIN members ON members.id = event_roster.member_id
+     WHERE members.team_id = $1 AND members.cred_type = 'Single event'`,
+    [team.id]
+  );
+  const singleUsed = singleRows[0].c;
+
+  const annualOver = team.annual_limit != null && annualUsed > team.annual_limit;
+  const singleOver = team.single_limit != null && singleUsed > team.single_limit;
+  return {
+    annualUsed, singleUsed,
+    annualLimit: team.annual_limit, singleLimit: team.single_limit,
+    annualOver, singleOver, over: annualOver || singleOver
+  };
 }
 
 // Race-weekend context: which event this team is currently confirming registration for.
@@ -70,7 +99,7 @@ router.get("/", async (req, res, next) => {
       );
       attendingIds = new Set(roster.map((r) => r.member_id));
     }
-    const usage = teamUsage(team, members);
+    const usage = await creditUsage(team, eventId);
     res.render("portal/dashboard", {
       title: "Weekend Roster", nav: "portal", active: "roster",
       team, members, attendingIds, usage, fullName, initials, fmtDate,
@@ -213,8 +242,8 @@ router.get("/documents", async (req, res, next) => {
 router.get("/credentials", async (req, res, next) => {
   try {
     const team = await loadTeam(req);
-    const { rows: members } = await pool.query("SELECT * FROM members WHERE team_id = $1", [team.id]);
-    const usage = teamUsage(team, members);
+    const eventId = res.locals.currentEvent ? res.locals.currentEvent.id : null;
+    const usage = await creditUsage(team, eventId);
     const { rows: requests } = await pool.query(
       "SELECT * FROM credential_requests WHERE team_id = $1 ORDER BY created_at DESC", [team.id]
     );
