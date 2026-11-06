@@ -49,6 +49,7 @@
             <span class="lim-used<%= r.usage.singleOver ? ' over' : '' %>"><%= r.usage.singleUsed %><%= r.team.single_limit != null ? '/' + r.team.single_limit : ' / ∞' %></span>
           </div>
           <div style="display:flex;gap:6px">
+            <a class="btn sm" href="/staff/teams/<%= r.team.id %>/roster">View roster</a>
             <form class="inline" method="post" action="/staff/teams/<%= r.team.id %>/regen-code" onsubmit="return confirm('Regenerate this team\'s access code? Their old code will stop working.');">
               <button class="btn sm" type="submit">New code</button>
             </form>
