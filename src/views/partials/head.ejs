@@ -52,7 +52,10 @@
           <span class="felm-topbar-sep"></span>
           <span class="felm-topbar-place"><%= EVENT_NAME %></span>
         </div>
-        <% if (typeof events !== "undefined" && events && events.length) { %>
+        <span class="felm-topbar-badge"><%= nav === "staff" ? "Credential Desk" : "Team Portal" %></span>
+      </header>
+      <% if (typeof events !== "undefined" && events && events.length) { %>
+        <div class="felm-eventbar">
           <details class="felm-eventpick">
             <summary class="felm-eventpick-sum">
               <span class="ep-round"><%= currentEvent ? currentEvent.round_label : "Select" %></span>
@@ -75,9 +78,8 @@
               </div>
             </div>
           </details>
-        <% } %>
-        <span class="felm-topbar-badge"><%= nav === "staff" ? "Credential Desk" : "Team Portal" %></span>
-      </header>
+        </div>
+      <% } %>
       <nav class="felm-subnav">
         <% (nav === "staff" ? STAFF_TABS : PORTAL_TABS).forEach(function(t) { %>
           <a href="<%= t.href %>" class="sn-link <%= active === t.key ? 'active' : '' %>"><%- t.label %></a>
