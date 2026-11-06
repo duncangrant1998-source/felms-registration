@@ -9,7 +9,7 @@ const pool = new Pool({
       : false
 });
 
-const SCHEMA = `
+const SCHEMA = \`
 CREATE TABLE IF NOT EXISTS teams (
   id SERIAL PRIMARY KEY,
   name TEXT UNIQUE NOT NULL,
@@ -65,10 +65,35 @@ CREATE TABLE IF NOT EXISTS credential_requests (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
-`;
+
+CREATE TABLE IF NOT EXISTS events (
+  id SERIAL PRIMARY KEY,
+  round_label TEXT NOT NULL,
+  title TEXT NOT NULL,
+  date_label TEXT DEFAULT '',
+  sort_order INTEGER NOT NULL DEFAULT 0
+);
+\`;
+
+const EVENT_SEED = [
+  ["R1", "Castrol Victoria Day Speedfest", "May 15-17", 1],
+  ["R2", "Calabogie NASCAR Weekend", "Jul 17-19", 2],
+  ["R3", "Grand Prix de Trois-Rivières", "Aug 7-9", 3],
+  ["R4", "Markham", "Aug 15-16", 4],
+  ["R5", "Labour Day Weekend Sprints", "Sep 4-6", 5]
+];
 
 async function initSchema() {
   await pool.query(SCHEMA);
+  const { rows } = await pool.query("SELECT COUNT(*)::int AS c FROM events");
+  if (rows[0].c === 0) {
+    for (const [round_label, title, date_label, sort_order] of EVENT_SEED) {
+      await pool.query(
+        "INSERT INTO events (round_label, title, date_label, sort_order) VALUES ($1,$2,$3,$4)",
+        [round_label, title, date_label, sort_order]
+      );
+    }
+  }
 }
 
 module.exports = { pool, initSchema };
