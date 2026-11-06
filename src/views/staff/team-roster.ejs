@@ -1,0 +1,58 @@
+<%- include('../partials/head', { title, nav, active }) %>
+<div class="page-head">
+  <div>
+    <div class="kicker"><a href="/staff/teams" style="color:var(--muted);text-decoration:none">&larr; Teams &amp; Allowances</a></div>
+    <h1><%= team.name %></h1>
+    <div class="sub">Full season roster, who's attending each race weekend, and a timestamped log of every change the team has made to their weekend rosters.</div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="panel" style="margin-top:18px">
+    <div class="panel-head"><h2>Full roster (<%= members.length %>)</h2></div>
+    <% if (!members.length) { %>
+      <div class="empty">This team hasn't added any members yet.</div>
+    <% } %>
+    <div class="rowlist">
+      <% members.forEach(function(m) { %>
+        <div class="mrow">
+          <span class="avatar">
+            <% if (m.headshot_path) { %><img src="<%= m.headshot_path %>" alt=""><% } else { %><%= initials(m) %><% } %>
+          </span>
+          <a href="/staff/members/<%= m.id %>" style="text-decoration:none;color:inherit;min-width:0">
+            <div class="mr-name"><%= fullName(m) %></div>
+            <div class="mr-role"><%= m.role || '—' %></div>
+          </a>
+          <div class="mr-right" style="flex-wrap:wrap;justify-content:flex-end">
+            <% events.forEach(function(e) { %>
+              <% var on = attendingByEvent[e.id] && attendingByEvent[e.id].has(m.id); %>
+              <span class="tag" style="<%= on ? 'border-color:var(--red-text);color:var(--red-text)' : 'opacity:.35' %>" title="<%= e.title %>"><%= e.round_label %></span>
+            <% }) %>
+          </div>
+        </div>
+      <% }) %>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-top:18px">
+    <div class="panel-head"><h2>Weekend roster change log</h2></div>
+    <% if (!log.length) { %>
+      <div class="empty">No weekend-roster changes recorded yet.</div>
+    <% } else { %>
+      <table class="simple">
+        <thead><tr><th>When</th><th>Weekend</th><th>Member</th><th>Change</th></tr></thead>
+        <tbody>
+          <% log.forEach(function(l) { %>
+            <tr>
+              <td><%= fmtStamp(l.changed_at) %></td>
+              <td><%= l.round_label %> — <%= l.event_title %></td>
+              <td><%= l.member_name %></td>
+              <td><span class="status-pill <%= l.action === 'added' ? 'fulfilled' : 'cancelled' %>"><%= l.action === 'added' ? 'Added' : 'Removed' %></span></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    <% } %>
+  </div>
+</div>
+<%- include('../partials/foot') %>
