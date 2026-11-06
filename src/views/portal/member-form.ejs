@@ -1,7 +1,7 @@
 <%- include('../partials/head', { title, nav, active }) %>
 <div class="page-head">
   <div>
-    <div class="kicker"><a href="/portal" style="color:var(--muted);text-decoration:none">&larr; <%= team.name %> roster</a></div>
+    <div class="kicker"><a href="/portal/members" style="color:var(--muted);text-decoration:none">&larr; <%= team.name %> roster</a></div>
     <h1><%= member ? 'Edit Team Member' : 'Add Team Member' %></h1>
   </div>
 </div>
@@ -43,7 +43,7 @@
         </div>
 
         <div class="form-actions">
-          <a class="btn" href="/portal">Cancel</a>
+          <a class="btn" href="/portal/members">Cancel</a>
           <button class="btn primary" type="submit"><%= member ? 'Save changes' : 'Add to roster' %></button>
         </div>
       </form>
