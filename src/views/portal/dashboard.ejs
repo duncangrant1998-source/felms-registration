@@ -18,12 +18,12 @@
   <div class="panel" style="margin-top:18px">
     <div class="stats" style="grid-template-columns:repeat(2,1fr)">
       <div class="s-cell">
-        <span class="label">Annual credentials</span>
+        <span class="label">Annual credentials — this weekend</span>
         <div class="s-count cred"><em><%= usage.annualUsed %></em> <span style="color:var(--muted);font-size:13px">/ <%= usage.annualLimit != null ? usage.annualLimit : '∞' %></span></div>
         <% if (usage.annualOver) { %><div class="hint" style="color:#FF6B84">Over your allowance — request more under Credentials.</div><% } %>
       </div>
       <div class="s-cell">
-        <span class="label">Single-event credentials</span>
+        <span class="label">Single-event credentials — season total</span>
         <div class="s-count waiver"><em><%= usage.singleUsed %></em> <span style="color:var(--muted);font-size:13px">/ <%= usage.singleLimit != null ? usage.singleLimit : '∞' %></span></div>
         <% if (usage.singleOver) { %><div class="hint" style="color:#FF6B84">Over your allowance — request more under Credentials.</div><% } %>
       </div>
