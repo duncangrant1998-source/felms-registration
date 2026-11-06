@@ -38,6 +38,13 @@ app.get("/", (req, res) => {
   res.render("landing", { title: "FEL Motorsports — Registration" });
 });
 
+// These pages reflect live, frequently-changing state (weekend rosters, credential
+// status) — never let the browser serve a cached copy after a POST redirects back here.
+app.use(["/staff", "/portal"], (req, res, next) => {
+  res.set("Cache-Control", "no-store");
+  next();
+});
+
 app.use("/staff", staffRoutes);
 app.use("/portal", portalRoutes);
 
