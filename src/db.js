@@ -9,7 +9,7 @@ const pool = new Pool({
       : false
 });
 
-const SCHEMA = \`
+const SCHEMA = `
 CREATE TABLE IF NOT EXISTS teams (
   id SERIAL PRIMARY KEY,
   name TEXT UNIQUE NOT NULL,
@@ -73,7 +73,7 @@ CREATE TABLE IF NOT EXISTS events (
   date_label TEXT DEFAULT '',
   sort_order INTEGER NOT NULL DEFAULT 0
 );
-\`;
+`;
 
 const EVENT_SEED = [
   ["R1", "Castrol Victoria Day Speedfest", "May 15-17", 1],
