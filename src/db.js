@@ -74,7 +74,25 @@ CREATE TABLE IF NOT EXISTS events (
   sort_order INTEGER NOT NULL DEFAULT 0
 );
 
-ALTER TABLE members ADD COLUMN IF NOT EXISTS event_id INTEGER REFERENCES events(id);
+ALTER TABLE members DROP COLUMN IF EXISTS event_id;
+
+CREATE TABLE IF NOT EXISTS event_roster (
+  id SERIAL PRIMARY KEY,
+  event_id INTEGER NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+  member_id INTEGER NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+  added_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE(event_id, member_id)
+);
+
+CREATE TABLE IF NOT EXISTS event_roster_log (
+  id SERIAL PRIMARY KEY,
+  event_id INTEGER NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+  team_id INTEGER NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+  member_id INTEGER REFERENCES members(id) ON DELETE SET NULL,
+  member_name TEXT NOT NULL,
+  action TEXT NOT NULL,
+  changed_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
 `;
 
 const EVENT_SEED = [
@@ -96,10 +114,6 @@ async function initSchema() {
       );
     }
   }
-  await pool.query(
-    `UPDATE members SET event_id = (SELECT id FROM events ORDER BY sort_order ASC, id ASC LIMIT 1)
-     WHERE event_id IS NULL`
-  );
 }
 
 module.exports = { pool, initSchema };
