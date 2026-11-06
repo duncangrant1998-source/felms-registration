@@ -30,14 +30,44 @@
     </div>
   </div>
 
+  <% var attendingMembers = members.filter(function(m) { return attendingIds.has(m.id); }); %>
+  <% var notAttending = members.filter(function(m) { return !attendingIds.has(m.id); }); %>
+
   <div class="panel" style="margin-top:18px">
-    <div class="panel-head"><h2>Attending this weekend (<%= attendingIds.size %> of <%= members.length %>)</h2></div>
+    <div class="panel-head">
+      <h2>Attending this weekend (<%= attendingIds.size %> of <%= members.length %>)</h2>
+      <% if (notAttending.length) { %>
+        <details class="roster-add">
+          <summary class="btn sm primary">+ Add team member</summary>
+          <div class="roster-add-panel">
+            <div class="ep-panel-head">Not yet attending</div>
+            <div class="roster-add-list">
+              <% notAttending.forEach(function(m) { %>
+                <form method="post" action="/portal/roster/toggle" class="roster-add-row-form">
+                  <input type="hidden" name="member_id" value="<%= m.id %>">
+                  <button type="submit" class="roster-add-row">
+                    <span class="avatar">
+                      <% if (m.headshot_path) { %><img src="<%= m.headshot_path %>" alt=""><% } else { %><%= initials(m) %><% } %>
+                    </span>
+                    <span class="roster-add-row-name">
+                      <span class="mr-name"><%= fullName(m) %></span>
+                      <span class="mr-role"><%= m.role || '—' %></span>
+                    </span>
+                  </button>
+                </form>
+              <% }) %>
+            </div>
+          </div>
+        </details>
+      <% } %>
+    </div>
     <% if (!members.length) { %>
       <div class="empty">Your team roster is empty. <a href="/portal/members">Add team members</a> first, then come back here to select who's attending each weekend.</div>
+    <% } else if (!attendingMembers.length) { %>
+      <div class="empty">No one's on this weekend's roster yet. Click <b>+ Add team member</b> above to get started.</div>
     <% } %>
     <div class="rowlist">
-      <% members.forEach(function(m) { %>
-        <% var attending = attendingIds.has(m.id); %>
+      <% attendingMembers.forEach(function(m) { %>
         <div class="mrow">
           <span class="avatar">
             <% if (m.headshot_path) { %><img src="<%= m.headshot_path %>" alt=""><% } else { %><%= initials(m) %><% } %>
@@ -47,10 +77,10 @@
             <div class="mr-role"><%= m.role || '—' %></div>
           </div>
           <div class="mr-right">
-            <% if (attending) { %><span class="status-pill fulfilled">On weekend roster</span><% } %>
+            <span class="status-pill fulfilled">On weekend roster</span>
             <form class="inline" method="post" action="/portal/roster/toggle">
               <input type="hidden" name="member_id" value="<%= m.id %>">
-              <button class="btn sm <%= attending ? 'danger' : 'primary' %>" type="submit"><%= attending ? 'Remove' : 'Add' %></button>
+              <button class="btn sm danger" type="submit">Not Attending</button>
             </form>
           </div>
         </div>
