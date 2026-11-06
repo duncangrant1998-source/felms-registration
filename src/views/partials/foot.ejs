@@ -2,6 +2,13 @@
       </div>
     </div>
   </div>
+  <script>
+    document.addEventListener("click", function (e) {
+      document.querySelectorAll(".felm-eventpick[open]").forEach(function (d) {
+        if (!d.contains(e.target)) d.removeAttribute("open");
+      });
+    });
+  </script>
 <% } %>
 </body>
 </html>
