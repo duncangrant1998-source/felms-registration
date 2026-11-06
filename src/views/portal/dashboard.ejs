@@ -1,21 +1,20 @@
 <%- include('../partials/head', { title, nav, active }) %>
 <div class="page-head">
   <div>
-    <div class="kicker"><%= EVENT_NAME %></div>
-    <h1><%= team.name %></h1>
-    <div class="sub">Add your drivers and crew, upload a headshot for each, and FEL Motorsports staff will issue credentials and hard cards as you register.</div>
+    <div class="kicker"><%= currentEvent ? currentEvent.round_label + ' — ' + currentEvent.title : EVENT_NAME %></div>
+    <h1>Weekend Roster</h1>
+    <div class="sub">Choose which of your roster members are attending this race weekend. FEL Motorsports staff can see every change here, with who and when.</div>
   </div>
   <div class="page-actions">
-    <a class="btn primary" href="/portal/members/new">Add Team Member</a>
+    <a class="btn" href="/portal/members">Manage Team Roster</a>
   </div>
 </div>
 
 <div class="wrap">
   <% if (flash) { %>
     <div class="flash success" style="margin-top:18px">
-      <% if (flash==='added') { %>Team member added.<% } %>
-      <% if (flash==='updated') { %>Team member updated.<% } %>
-      <% if (flash==='removed') { %>Team member removed.<% } %>
+      <% if (flash==='attending') { %>Added to this weekend's roster.<% } %>
+      <% if (flash==='notattending') { %>Removed from this weekend's roster.<% } %>
     </div>
   <% } %>
 
@@ -35,29 +34,26 @@
   </div>
 
   <div class="panel" style="margin-top:18px">
-    <div class="panel-head"><h2>Roster (<%= members.length %>)</h2></div>
+    <div class="panel-head"><h2>Attending this weekend (<%= attendingIds.size %> of <%= members.length %>)</h2></div>
     <% if (!members.length) { %>
-      <div class="empty">No team members yet. Click <b>Add Team Member</b> to get started.</div>
+      <div class="empty">Your team roster is empty. <a href="/portal/members">Add team members</a> first, then come back here to select who's attending each weekend.</div>
     <% } %>
     <div class="rowlist">
       <% members.forEach(function(m) { %>
+        <% var attending = attendingIds.has(m.id); %>
         <div class="mrow">
           <span class="avatar">
             <% if (m.headshot_path) { %><img src="<%= m.headshot_path %>" alt=""><% } else { %><%= initials(m) %><% } %>
           </span>
           <div style="min-width:0">
             <div class="mr-name"><%= fullName(m) %></div>
-            <div class="mr-role"><%= m.role || '—' %><%= m.cred_type === 'Single event' ? ' · single event' : '' %></div>
+            <div class="mr-role"><%= m.role || '—' %></div>
           </div>
           <div class="mr-right">
-            <span class="pips">
-              <span class="pip cred<%= m.cred_done ? ' on' : '' %>" title="Credential issued"></span>
-              <span class="pip waiver<%= m.waiver_done ? ' on' : '' %>" title="Speed waiver"></span>
-              <span class="pip regs<%= m.regs_done ? ' on' : '' %>" title="Regs acknowledged"></span>
-            </span>
-            <a class="btn sm" href="/portal/members/<%= m.id %>/edit">Edit</a>
-            <form class="inline" method="post" action="/portal/members/<%= m.id %>/delete" onsubmit="return confirm('Remove this team member?');">
-              <button class="btn sm danger" type="submit">Remove</button>
+            <% if (attending) { %><span class="status-pill fulfilled">On weekend roster</span><% } %>
+            <form class="inline" method="post" action="/portal/roster/toggle">
+              <input type="hidden" name="member_id" value="<%= m.id %>">
+              <button class="btn sm <%= attending ? 'danger' : 'primary' %>" type="submit"><%= attending ? 'Remove' : 'Add' %></button>
             </form>
           </div>
         </div>
