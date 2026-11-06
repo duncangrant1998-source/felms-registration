@@ -4,7 +4,7 @@
   </div>
   <script>
     document.addEventListener("click", function (e) {
-      document.querySelectorAll(".felm-eventpick[open]").forEach(function (d) {
+      document.querySelectorAll(".felm-eventpick[open], .roster-add[open]").forEach(function (d) {
         if (!d.contains(e.target)) d.removeAttribute("open");
       });
     });
