@@ -73,6 +73,8 @@ CREATE TABLE IF NOT EXISTS events (
   date_label TEXT DEFAULT '',
   sort_order INTEGER NOT NULL DEFAULT 0
 );
+
+ALTER TABLE members ADD COLUMN IF NOT EXISTS event_id INTEGER REFERENCES events(id);
 `;
 
 const EVENT_SEED = [
@@ -94,6 +96,10 @@ async function initSchema() {
       );
     }
   }
+  await pool.query(
+    `UPDATE members SET event_id = (SELECT id FROM events ORDER BY sort_order ASC, id ASC LIMIT 1)
+     WHERE event_id IS NULL`
+  );
 }
 
 module.exports = { pool, initSchema };
