@@ -54,20 +54,75 @@ router.post("/event", (req, res) => {
   res.redirect(req.get("Referer") || "/portal");
 });
 
-// ---------- Roster ----------
+// ---------- Weekend roster: who's attending the currently-selected event ----------
 router.get("/", async (req, res, next) => {
   try {
     const team = await loadTeam(req);
     if (!team) { req.session.teamId = null; return res.redirect("/portal/login"); }
-    const eventId = res.locals.currentEvent ? res.locals.currentEvent.id : null;
     const { rows: members } = await pool.query(
-      "SELECT * FROM members WHERE team_id = $1 AND event_id = $2 ORDER BY last_name ASC, first_name ASC",
-      [team.id, eventId]
+      "SELECT * FROM members WHERE team_id = $1 ORDER BY last_name ASC, first_name ASC", [team.id]
     );
+    const eventId = res.locals.currentEvent ? res.locals.currentEvent.id : null;
+    let attendingIds = new Set();
+    if (eventId) {
+      const { rows: roster } = await pool.query(
+        "SELECT member_id FROM event_roster WHERE event_id = $1", [eventId]
+      );
+      attendingIds = new Set(roster.map((r) => r.member_id));
+    }
     const usage = teamUsage(team, members);
     res.render("portal/dashboard", {
-      title: "My Roster", nav: "portal", active: "roster",
-      team, members, usage, fullName, initials, fmtDate,
+      title: "Weekend Roster", nav: "portal", active: "roster",
+      team, members, attendingIds, usage, fullName, initials, fmtDate,
+      flash: req.query.ok || null
+    });
+  } catch (err) { next(err); }
+});
+
+router.post("/roster/toggle", async (req, res, next) => {
+  try {
+    const team = await loadTeam(req);
+    const eventId = res.locals.currentEvent ? res.locals.currentEvent.id : null;
+    const memberId = parseInt(req.body.member_id, 10);
+    if (!eventId || !memberId) return res.redirect("/portal");
+    const { rows: mrows } = await pool.query(
+      "SELECT * FROM members WHERE id = $1 AND team_id = $2", [memberId, team.id]
+    );
+    const member = mrows[0];
+    if (!member) return res.redirect("/portal");
+
+    const { rows: existing } = await pool.query(
+      "SELECT 1 FROM event_roster WHERE event_id = $1 AND member_id = $2", [eventId, memberId]
+    );
+    if (existing.length) {
+      await pool.query("DELETE FROM event_roster WHERE event_id = $1 AND member_id = $2", [eventId, memberId]);
+      await pool.query(
+        `INSERT INTO event_roster_log (event_id, team_id, member_id, member_name, action)
+         VALUES ($1,$2,$3,$4,'removed')`,
+        [eventId, team.id, memberId, fullName(member)]
+      );
+      return res.redirect("/portal?ok=notattending");
+    }
+    await pool.query("INSERT INTO event_roster (event_id, member_id) VALUES ($1,$2)", [eventId, memberId]);
+    await pool.query(
+      `INSERT INTO event_roster_log (event_id, team_id, member_id, member_name, action)
+       VALUES ($1,$2,$3,$4,'added')`,
+      [eventId, team.id, memberId, fullName(member)]
+    );
+    res.redirect("/portal?ok=attending");
+  } catch (err) { next(err); }
+});
+
+// ---------- My Roster: the team's full season roster ----------
+router.get("/members", async (req, res, next) => {
+  try {
+    const team = await loadTeam(req);
+    const { rows: members } = await pool.query(
+      "SELECT * FROM members WHERE team_id = $1 ORDER BY last_name ASC, first_name ASC", [team.id]
+    );
+    res.render("portal/members", {
+      title: "My Roster", nav: "portal", active: "members",
+      team, members, fullName, initials,
       flash: req.query.ok || null
     });
   } catch (err) { next(err); }
@@ -76,48 +131,43 @@ router.get("/", async (req, res, next) => {
 router.get("/members/new", async (req, res, next) => {
   try {
     const team = await loadTeam(req);
-    res.render("portal/member-form", { title: "Add Team Member", nav: "portal", active: "roster", team, member: null });
+    res.render("portal/member-form", { title: "Add Team Member", nav: "portal", active: "members", team, member: null });
   } catch (err) { next(err); }
 });
 
 router.post("/members", photoUpload.single("headshot"), async (req, res, next) => {
   try {
     const team = await loadTeam(req);
-    const eventId = res.locals.currentEvent ? res.locals.currentEvent.id : null;
     const { first_name, last_name, role, email, phone, cred_type, cred_event } = req.body;
     if (!first_name || !last_name) return res.redirect("/portal/members/new");
     const headshot_path = req.file ? `/uploads/photos/${req.file.filename}` : "";
     await pool.query(
-      `INSERT INTO members (team_id, event_id, first_name, last_name, role, email, phone, cred_type, cred_event, headshot_path)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
-      [team.id, eventId, first_name.trim(), last_name.trim(), role || "", email || "", phone || "",
+      `INSERT INTO members (team_id, first_name, last_name, role, email, phone, cred_type, cred_event, headshot_path)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+      [team.id, first_name.trim(), last_name.trim(), role || "", email || "", phone || "",
         cred_type || "Annual", cred_event || "", headshot_path]
     );
-    res.redirect("/portal?ok=added");
+    res.redirect("/portal/members?ok=added");
   } catch (err) { next(err); }
 });
 
 router.get("/members/:id/edit", async (req, res, next) => {
   try {
     const team = await loadTeam(req);
-    const eventId = res.locals.currentEvent ? res.locals.currentEvent.id : null;
     const { rows } = await pool.query(
-      "SELECT * FROM members WHERE id = $1 AND team_id = $2 AND event_id = $3",
-      [req.params.id, team.id, eventId]
+      "SELECT * FROM members WHERE id = $1 AND team_id = $2", [req.params.id, team.id]
     );
     const member = rows[0];
     if (!member) return res.status(404).render("error", { title: "Not found", message: "Member not found." });
-    res.render("portal/member-form", { title: `Edit ${fullName(member)}`, nav: "portal", active: "roster", team, member });
+    res.render("portal/member-form", { title: `Edit ${fullName(member)}`, nav: "portal", active: "members", team, member });
   } catch (err) { next(err); }
 });
 
 router.post("/members/:id/update", photoUpload.single("headshot"), async (req, res, next) => {
   try {
     const team = await loadTeam(req);
-    const eventId = res.locals.currentEvent ? res.locals.currentEvent.id : null;
     const { rows } = await pool.query(
-      "SELECT * FROM members WHERE id = $1 AND team_id = $2 AND event_id = $3",
-      [req.params.id, team.id, eventId]
+      "SELECT * FROM members WHERE id = $1 AND team_id = $2", [req.params.id, team.id]
     );
     const existing = rows[0];
     if (!existing) return res.status(404).render("error", { title: "Not found", message: "Member not found." });
@@ -134,22 +184,20 @@ router.post("/members/:id/update", photoUpload.single("headshot"), async (req, r
       [first_name.trim(), last_name.trim(), role || "", email || "", phone || "",
         cred_type || "Annual", cred_event || "", headshot_path, req.params.id, team.id]
     );
-    res.redirect("/portal?ok=updated");
+    res.redirect("/portal/members?ok=updated");
   } catch (err) { next(err); }
 });
 
 router.post("/members/:id/delete", async (req, res, next) => {
   try {
     const team = await loadTeam(req);
-    const eventId = res.locals.currentEvent ? res.locals.currentEvent.id : null;
     const { rows } = await pool.query(
-      "SELECT * FROM members WHERE id = $1 AND team_id = $2 AND event_id = $3",
-      [req.params.id, team.id, eventId]
+      "SELECT * FROM members WHERE id = $1 AND team_id = $2", [req.params.id, team.id]
     );
     const m = rows[0];
     if (m && m.headshot_path) fs.unlink(path.join(PHOTO_DIR, path.basename(m.headshot_path)), () => {});
     await pool.query("DELETE FROM members WHERE id = $1 AND team_id = $2", [req.params.id, team.id]);
-    res.redirect("/portal?ok=removed");
+    res.redirect("/portal/members?ok=removed");
   } catch (err) { next(err); }
 });
 
@@ -165,10 +213,7 @@ router.get("/documents", async (req, res, next) => {
 router.get("/credentials", async (req, res, next) => {
   try {
     const team = await loadTeam(req);
-    const eventId = res.locals.currentEvent ? res.locals.currentEvent.id : null;
-    const { rows: members } = await pool.query(
-      "SELECT * FROM members WHERE team_id = $1 AND event_id = $2", [team.id, eventId]
-    );
+    const { rows: members } = await pool.query("SELECT * FROM members WHERE team_id = $1", [team.id]);
     const usage = teamUsage(team, members);
     const { rows: requests } = await pool.query(
       "SELECT * FROM credential_requests WHERE team_id = $1 ORDER BY created_at DESC", [team.id]
