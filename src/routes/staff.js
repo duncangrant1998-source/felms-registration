@@ -52,8 +52,11 @@ router.get("/", async (req, res, next) => {
     const q = (req.query.q || "").trim().toLowerCase();
     const filter = req.query.filter || "";
 
+    const eventId = res.locals.currentEvent ? res.locals.currentEvent.id : null;
     const { rows: teams } = await pool.query("SELECT * FROM teams ORDER BY name ASC");
-    const { rows: members } = await pool.query("SELECT * FROM members ORDER BY last_name ASC, first_name ASC");
+    const { rows: members } = await pool.query(
+      "SELECT * FROM members WHERE event_id = $1 ORDER BY last_name ASC, first_name ASC", [eventId]
+    );
 
     const membersByTeam = {};
     for (const m of members) {
@@ -62,7 +65,7 @@ router.get("/", async (req, res, next) => {
 
     function matchesSearch(m, team) {
       if (!q) return true;
-      const hay = (fullName(m) + " " + m.role + " " + team.name).toLowerCase();
+      const hay = `${fullName(m)} ${m.role} ${team.name}`.toLowerCase();
       return hay.includes(q);
     }
     function matchesFilter(m) {
@@ -129,33 +132,33 @@ router.post("/members/:id/update", photoUpload.single("headshot"), async (req, r
       if (existing.headshot_path) {
         fs.unlink(path.join(PHOTO_DIR, path.basename(existing.headshot_path)), () => {});
       }
-      headshot_path = "/uploads/photos/" + req.file.filename;
+      headshot_path = `/uploads/photos/${req.file.filename}`;
     }
 
     await pool.query(
-      "UPDATE members SET first_name=$1, last_name=$2, role=$3, email=$4, phone=$5, " +
-      "cred_type=$6, cred_event=$7, emg_name=$8, emg_relation=$9, emg_phone=$10, " +
-      "notes=$11, headshot_path=$12, updated_at=now() WHERE id=$13",
+      `UPDATE members SET first_name=$1, last_name=$2, role=$3, email=$4, phone=$5,
+       cred_type=$6, cred_event=$7, emg_name=$8, emg_relation=$9, emg_phone=$10,
+       notes=$11, headshot_path=$12, updated_at=now() WHERE id=$13`,
       [first_name, last_name, role, email, phone, cred_type, cred_event,
         emg_name, emg_relation, emg_phone, notes, headshot_path, req.params.id]
     );
-    res.redirect("/staff/members/" + req.params.id);
+    res.redirect(`/staff/members/${req.params.id}`);
   } catch (err) { next(err); }
 });
 
 router.post("/members/:id/toggle/:field", async (req, res, next) => {
   try {
     const field = req.params.field;
-    if (!["cred", "waiver", "regs"].includes(field)) return res.status(400).send("Bad field");
+    if (["cred", "waiver", "regs"].includes(field) === false) return res.status(400).send("Bad field");
     const { rows } = await pool.query("SELECT * FROM members WHERE id = $1", [req.params.id]);
     const m = rows[0];
     if (!m) return res.status(404).render("error", { title: "Not found", message: "Member not found." });
-    const next_ = !m[field + "_done"];
+    const next_ = !m[`${field}_done`];
     await pool.query(
-      "UPDATE members SET " + field + "_done=$1, " + field + "_at=$2, updated_at=now() WHERE id=$3",
+      `UPDATE members SET ${field}_done=$1, ${field}_at=$2, updated_at=now() WHERE id=$3`,
       [next_, next_ ? new Date() : null, req.params.id]
     );
-    res.redirect(req.get("Referer") || "/staff/members/" + req.params.id);
+    res.redirect(req.get("Referer") || `/staff/members/${req.params.id}`);
   } catch (err) { next(err); }
 });
 
@@ -172,8 +175,9 @@ router.post("/members/:id/delete", async (req, res, next) => {
 // ---------- Teams & allowances ----------
 router.get("/teams", async (req, res, next) => {
   try {
+    const eventId = res.locals.currentEvent ? res.locals.currentEvent.id : null;
     const { rows: teams } = await pool.query("SELECT * FROM teams ORDER BY name ASC");
-    const { rows: members } = await pool.query("SELECT * FROM members");
+    const { rows: members } = await pool.query("SELECT * FROM members WHERE event_id = $1", [eventId]);
     const membersByTeam = {};
     for (const m of members) (membersByTeam[m.team_id] = membersByTeam[m.team_id] || []).push(m);
     const rows = teams.map((team) => ({ team, usage: teamUsage(team, membersByTeam[team.id] || []) }));
@@ -187,8 +191,8 @@ router.post("/teams", async (req, res, next) => {
     if (!name || !name.trim()) return res.redirect("/staff/teams");
     const code = generateAccessCode();
     await pool.query(
-      "INSERT INTO teams (name, access_code, group_type, annual_limit, single_limit) " +
-      "VALUES ($1,$2,$3,$4,$5)",
+      `INSERT INTO teams (name, access_code, group_type, annual_limit, single_limit)
+       VALUES ($1,$2,$3,$4,$5)`,
       [name.trim(), code, group_type || "Team",
         annual_limit ? parseInt(annual_limit, 10) : null,
         single_limit ? parseInt(single_limit, 10) : null]
@@ -201,7 +205,7 @@ router.post("/teams/:id/update", async (req, res, next) => {
   try {
     const { name, group_type, annual_limit, single_limit } = req.body;
     await pool.query(
-      "UPDATE teams SET name=$1, group_type=$2, annual_limit=$3, single_limit=$4 WHERE id=$5",
+      `UPDATE teams SET name=$1, group_type=$2, annual_limit=$3, single_limit=$4 WHERE id=$5`,
       [name.trim(), group_type || "Team",
         annual_limit ? parseInt(annual_limit, 10) : null,
         single_limit ? parseInt(single_limit, 10) : null,
@@ -231,12 +235,13 @@ router.get("/cards", async (req, res, next) => {
   try {
     const teamId = req.query.team || "";
     const onlyUnprinted = req.query.unprinted === "1";
-    let sql = "SELECT members.*, teams.name AS team_name, teams.group_type AS team_group_type " +
-              "FROM members JOIN teams ON teams.id = members.team_id WHERE 1=1";
-    const params = [];
-    if (teamId) { params.push(teamId); sql += " AND members.team_id = $" + params.length; }
-    if (onlyUnprinted) sql += " AND members.card_printed = false";
-    sql += " ORDER BY teams.name ASC, members.last_name ASC";
+    const eventId = res.locals.currentEvent ? res.locals.currentEvent.id : null;
+    let sql = `SELECT members.*, teams.name AS team_name, teams.group_type AS team_group_type
+               FROM members JOIN teams ON teams.id = members.team_id WHERE members.event_id = $1`;
+    const params = [eventId];
+    if (teamId) { params.push(teamId); sql += ` AND members.team_id = $${params.length}`; }
+    if (onlyUnprinted) sql += ` AND members.card_printed = false`;
+    sql += ` ORDER BY teams.name ASC, members.last_name ASC`;
     const { rows: cards } = await pool.query(sql, params);
     const { rows: teams } = await pool.query("SELECT * FROM teams ORDER BY name ASC");
     res.render("staff/cards", {
@@ -270,8 +275,8 @@ router.post("/documents", documentUpload.single("file"), async (req, res, next) 
     if (!req.file) return res.redirect("/staff/documents");
     const { title, category } = req.body;
     await pool.query(
-      "INSERT INTO documents (title, category, original_name, storage_path) VALUES ($1,$2,$3,$4)",
-      [title || req.file.originalname, category || "Other", req.file.originalname, "/uploads/documents/" + req.file.filename]
+      `INSERT INTO documents (title, category, original_name, storage_path) VALUES ($1,$2,$3,$4)`,
+      [title || req.file.originalname, category || "Other", req.file.originalname, `/uploads/documents/${req.file.filename}`]
     );
     res.redirect("/staff/documents");
   } catch (err) { next(err); }
@@ -291,9 +296,9 @@ router.post("/documents/:id/delete", async (req, res, next) => {
 router.get("/credential-requests", async (req, res, next) => {
   try {
     const { rows: requests } = await pool.query(
-      "SELECT credential_requests.*, teams.name AS team_name " +
-      "FROM credential_requests JOIN teams ON teams.id = credential_requests.team_id " +
-      "ORDER BY (credential_requests.status = 'pending') DESC, credential_requests.created_at DESC"
+      `SELECT credential_requests.*, teams.name AS team_name
+       FROM credential_requests JOIN teams ON teams.id = credential_requests.team_id
+       ORDER BY (credential_requests.status = 'pending') DESC, credential_requests.created_at DESC`
     );
     res.render("staff/requests", { title: "Credential Requests", nav: "staff", active: "requests", requests, fmtStamp });
   } catch (err) { next(err); }
@@ -302,7 +307,7 @@ router.get("/credential-requests", async (req, res, next) => {
 router.post("/credential-requests/:id/status", async (req, res, next) => {
   try {
     const { status } = req.body;
-    if (!["pending", "approved", "fulfilled", "cancelled"].includes(status)) return res.status(400).send("Bad status");
+    if (["pending", "approved", "fulfilled", "cancelled"].includes(status) === false) return res.status(400).send("Bad status");
     await pool.query("UPDATE credential_requests SET status=$1, updated_at=now() WHERE id=$2", [status, req.params.id]);
     res.redirect("/staff/credential-requests");
   } catch (err) { next(err); }
