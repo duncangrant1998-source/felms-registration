@@ -185,6 +185,8 @@ svg{display:block}
 /* ==========================================================================
    WEEKEND ROSTER — add-member dropdown
    ========================================================================== */
+/* .panel clips overflow for rounded corners; let it open up while the dropdown is active */
+.panel:has(.roster-add[open]){overflow:visible}
 .roster-add{position:relative}
 .roster-add summary{list-style:none}
 .roster-add summary::-webkit-details-marker{display:none}
