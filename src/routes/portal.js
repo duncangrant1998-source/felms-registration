@@ -59,8 +59,10 @@ router.get("/", async (req, res, next) => {
   try {
     const team = await loadTeam(req);
     if (!team) { req.session.teamId = null; return res.redirect("/portal/login"); }
+    const eventId = res.locals.currentEvent ? res.locals.currentEvent.id : null;
     const { rows: members } = await pool.query(
-      "SELECT * FROM members WHERE team_id = $1 ORDER BY last_name ASC, first_name ASC", [team.id]
+      "SELECT * FROM members WHERE team_id = $1 AND event_id = $2 ORDER BY last_name ASC, first_name ASC",
+      [team.id, eventId]
     );
     const usage = teamUsage(team, members);
     res.render("portal/dashboard", {
@@ -81,13 +83,14 @@ router.get("/members/new", async (req, res, next) => {
 router.post("/members", photoUpload.single("headshot"), async (req, res, next) => {
   try {
     const team = await loadTeam(req);
+    const eventId = res.locals.currentEvent ? res.locals.currentEvent.id : null;
     const { first_name, last_name, role, email, phone, cred_type, cred_event } = req.body;
     if (!first_name || !last_name) return res.redirect("/portal/members/new");
-    const headshot_path = req.file ? "/uploads/photos/" + req.file.filename : "";
+    const headshot_path = req.file ? `/uploads/photos/${req.file.filename}` : "";
     await pool.query(
-      "INSERT INTO members (team_id, first_name, last_name, role, email, phone, cred_type, cred_event, headshot_path) " +
-      "VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)",
-      [team.id, first_name.trim(), last_name.trim(), role || "", email || "", phone || "",
+      `INSERT INTO members (team_id, event_id, first_name, last_name, role, email, phone, cred_type, cred_event, headshot_path)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+      [team.id, eventId, first_name.trim(), last_name.trim(), role || "", email || "", phone || "",
         cred_type || "Annual", cred_event || "", headshot_path]
     );
     res.redirect("/portal?ok=added");
@@ -97,17 +100,25 @@ router.post("/members", photoUpload.single("headshot"), async (req, res, next) =
 router.get("/members/:id/edit", async (req, res, next) => {
   try {
     const team = await loadTeam(req);
-    const { rows } = await pool.query("SELECT * FROM members WHERE id = $1 AND team_id = $2", [req.params.id, team.id]);
+    const eventId = res.locals.currentEvent ? res.locals.currentEvent.id : null;
+    const { rows } = await pool.query(
+      "SELECT * FROM members WHERE id = $1 AND team_id = $2 AND event_id = $3",
+      [req.params.id, team.id, eventId]
+    );
     const member = rows[0];
     if (!member) return res.status(404).render("error", { title: "Not found", message: "Member not found." });
-    res.render("portal/member-form", { title: "Edit " + fullName(member), nav: "portal", active: "roster", team, member });
+    res.render("portal/member-form", { title: `Edit ${fullName(member)}`, nav: "portal", active: "roster", team, member });
   } catch (err) { next(err); }
 });
 
 router.post("/members/:id/update", photoUpload.single("headshot"), async (req, res, next) => {
   try {
     const team = await loadTeam(req);
-    const { rows } = await pool.query("SELECT * FROM members WHERE id = $1 AND team_id = $2", [req.params.id, team.id]);
+    const eventId = res.locals.currentEvent ? res.locals.currentEvent.id : null;
+    const { rows } = await pool.query(
+      "SELECT * FROM members WHERE id = $1 AND team_id = $2 AND event_id = $3",
+      [req.params.id, team.id, eventId]
+    );
     const existing = rows[0];
     if (!existing) return res.status(404).render("error", { title: "Not found", message: "Member not found." });
 
@@ -115,11 +126,11 @@ router.post("/members/:id/update", photoUpload.single("headshot"), async (req, r
     let headshot_path = existing.headshot_path;
     if (req.file) {
       if (existing.headshot_path) fs.unlink(path.join(PHOTO_DIR, path.basename(existing.headshot_path)), () => {});
-      headshot_path = "/uploads/photos/" + req.file.filename;
+      headshot_path = `/uploads/photos/${req.file.filename}`;
     }
     await pool.query(
-      "UPDATE members SET first_name=$1, last_name=$2, role=$3, email=$4, phone=$5, " +
-      "cred_type=$6, cred_event=$7, headshot_path=$8, updated_at=now() WHERE id=$9 AND team_id=$10",
+      `UPDATE members SET first_name=$1, last_name=$2, role=$3, email=$4, phone=$5,
+       cred_type=$6, cred_event=$7, headshot_path=$8, updated_at=now() WHERE id=$9 AND team_id=$10`,
       [first_name.trim(), last_name.trim(), role || "", email || "", phone || "",
         cred_type || "Annual", cred_event || "", headshot_path, req.params.id, team.id]
     );
@@ -130,7 +141,11 @@ router.post("/members/:id/update", photoUpload.single("headshot"), async (req, r
 router.post("/members/:id/delete", async (req, res, next) => {
   try {
     const team = await loadTeam(req);
-    const { rows } = await pool.query("SELECT * FROM members WHERE id = $1 AND team_id = $2", [req.params.id, team.id]);
+    const eventId = res.locals.currentEvent ? res.locals.currentEvent.id : null;
+    const { rows } = await pool.query(
+      "SELECT * FROM members WHERE id = $1 AND team_id = $2 AND event_id = $3",
+      [req.params.id, team.id, eventId]
+    );
     const m = rows[0];
     if (m && m.headshot_path) fs.unlink(path.join(PHOTO_DIR, path.basename(m.headshot_path)), () => {});
     await pool.query("DELETE FROM members WHERE id = $1 AND team_id = $2", [req.params.id, team.id]);
@@ -150,7 +165,10 @@ router.get("/documents", async (req, res, next) => {
 router.get("/credentials", async (req, res, next) => {
   try {
     const team = await loadTeam(req);
-    const { rows: members } = await pool.query("SELECT * FROM members WHERE team_id = $1", [team.id]);
+    const eventId = res.locals.currentEvent ? res.locals.currentEvent.id : null;
+    const { rows: members } = await pool.query(
+      "SELECT * FROM members WHERE team_id = $1 AND event_id = $2", [team.id, eventId]
+    );
     const usage = teamUsage(team, members);
     const { rows: requests } = await pool.query(
       "SELECT * FROM credential_requests WHERE team_id = $1 ORDER BY created_at DESC", [team.id]
@@ -168,7 +186,7 @@ router.post("/credentials/request", async (req, res, next) => {
     const { cred_type, quantity, note } = req.body;
     const qty = Math.max(1, parseInt(quantity, 10) || 1);
     await pool.query(
-      "INSERT INTO credential_requests (team_id, cred_type, quantity, note) VALUES ($1,$2,$3,$4)",
+      `INSERT INTO credential_requests (team_id, cred_type, quantity, note) VALUES ($1,$2,$3,$4)`,
       [team.id, cred_type || "Annual", qty, note || ""]
     );
     res.redirect("/portal/credentials?ok=requested");
