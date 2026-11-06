@@ -25,7 +25,7 @@
     { key: "documents", label: "Documents", href: "/staff/documents" }
   ];
   var PORTAL_TABS = [
-    { key: "roster", label: "My Roster", href: "/portal" },
+    { key: "roster", label: "Weekend Roster", href: "/portal" },
     { key: "credentials", label: "Credentials", href: "/portal/credentials" },
     { key: "documents", label: "Documents", href: "/portal/documents" }
   ];
@@ -54,30 +54,35 @@
         </div>
         <span class="felm-topbar-badge"><%= nav === "staff" ? "Credential Desk" : "Team Portal" %></span>
       </header>
-      <% if (typeof events !== "undefined" && events && events.length) { %>
+      <% if (nav === "portal" || (typeof events !== "undefined" && events && events.length)) { %>
         <div class="felm-eventbar">
-          <details class="felm-eventpick">
-            <summary class="felm-eventpick-sum">
-              <span class="ep-round"><%= currentEvent ? currentEvent.round_label : "Select" %></span>
-              <span class="ep-title"><%= currentEvent ? currentEvent.title : "a race weekend" %></span>
-              <svg class="ep-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
-            </summary>
-            <div class="felm-eventpick-panel">
-              <div class="ep-panel-head"><%= nav === "staff" ? "Viewing registration for" : "Confirming registration for" %></div>
-              <div class="ep-grid">
-                <% events.forEach(function(e) { %>
-                  <form method="post" action="<%= nav === 'staff' ? '/staff/event' : '/portal/event' %>" class="ep-card-form">
-                    <input type="hidden" name="event_id" value="<%= e.id %>">
-                    <button type="submit" class="ep-card <%= currentEvent && currentEvent.id === e.id ? 'active' : '' %>">
-                      <span class="ep-card-round"><%= e.round_label %></span>
-                      <span class="ep-card-title"><%= e.title %></span>
-                      <% if (e.date_label) { %><span class="ep-card-date"><%= e.date_label %></span><% } %>
-                    </button>
-                  </form>
-                <% }) %>
+          <% if (typeof events !== "undefined" && events && events.length) { %>
+            <details class="felm-eventpick">
+              <summary class="felm-eventpick-sum">
+                <span class="ep-round"><%= currentEvent ? currentEvent.round_label : "Select" %></span>
+                <span class="ep-title"><%= currentEvent ? currentEvent.title : "a race weekend" %></span>
+                <svg class="ep-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+              </summary>
+              <div class="felm-eventpick-panel">
+                <div class="ep-panel-head"><%= nav === "staff" ? "Viewing registration for" : "Confirming registration for" %></div>
+                <div class="ep-grid">
+                  <% events.forEach(function(e) { %>
+                    <form method="post" action="<%= nav === 'staff' ? '/staff/event' : '/portal/event' %>" class="ep-card-form">
+                      <input type="hidden" name="event_id" value="<%= e.id %>">
+                      <button type="submit" class="ep-card <%= currentEvent && currentEvent.id === e.id ? 'active' : '' %>">
+                        <span class="ep-card-round"><%= e.round_label %></span>
+                        <span class="ep-card-title"><%= e.title %></span>
+                        <% if (e.date_label) { %><span class="ep-card-date"><%= e.date_label %></span><% } %>
+                      </button>
+                    </form>
+                  <% }) %>
+                </div>
               </div>
-            </div>
-          </details>
+            </details>
+          <% } %>
+          <% if (nav === "portal") { %>
+            <a href="/portal/members" class="btn sm felm-myroster-btn">My Roster</a>
+          <% } %>
         </div>
       <% } %>
       <nav class="felm-subnav">
