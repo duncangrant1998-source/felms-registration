@@ -38,6 +38,22 @@ async function loadTeam(req) {
   return rows[0];
 }
 
+// Race-weekend context: which event this team is currently confirming registration for.
+router.use(async (req, res, next) => {
+  try {
+    const { rows: events } = await pool.query("SELECT * FROM events ORDER BY sort_order ASC, id ASC");
+    res.locals.events = events;
+    res.locals.currentEvent = events.find((e) => e.id === req.session.eventId) || events[events.length - 1] || null;
+    next();
+  } catch (err) { next(err); }
+});
+
+router.post("/event", (req, res) => {
+  const id = parseInt(req.body.event_id, 10);
+  if (id) req.session.eventId = id;
+  res.redirect(req.get("Referer") || "/portal");
+});
+
 // ---------- Roster ----------
 router.get("/", async (req, res, next) => {
   try {
@@ -67,10 +83,10 @@ router.post("/members", photoUpload.single("headshot"), async (req, res, next) =
     const team = await loadTeam(req);
     const { first_name, last_name, role, email, phone, cred_type, cred_event } = req.body;
     if (!first_name || !last_name) return res.redirect("/portal/members/new");
-    const headshot_path = req.file ? `/uploads/photos/${req.file.filename}` : "";
+    const headshot_path = req.file ? "/uploads/photos/" + req.file.filename : "";
     await pool.query(
-      `INSERT INTO members (team_id, first_name, last_name, role, email, phone, cred_type, cred_event, headshot_path)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+      "INSERT INTO members (team_id, first_name, last_name, role, email, phone, cred_type, cred_event, headshot_path) " +
+      "VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)",
       [team.id, first_name.trim(), last_name.trim(), role || "", email || "", phone || "",
         cred_type || "Annual", cred_event || "", headshot_path]
     );
@@ -84,7 +100,7 @@ router.get("/members/:id/edit", async (req, res, next) => {
     const { rows } = await pool.query("SELECT * FROM members WHERE id = $1 AND team_id = $2", [req.params.id, team.id]);
     const member = rows[0];
     if (!member) return res.status(404).render("error", { title: "Not found", message: "Member not found." });
-    res.render("portal/member-form", { title: `Edit ${fullName(member)}`, nav: "portal", active: "roster", team, member });
+    res.render("portal/member-form", { title: "Edit " + fullName(member), nav: "portal", active: "roster", team, member });
   } catch (err) { next(err); }
 });
 
@@ -99,11 +115,11 @@ router.post("/members/:id/update", photoUpload.single("headshot"), async (req, r
     let headshot_path = existing.headshot_path;
     if (req.file) {
       if (existing.headshot_path) fs.unlink(path.join(PHOTO_DIR, path.basename(existing.headshot_path)), () => {});
-      headshot_path = `/uploads/photos/${req.file.filename}`;
+      headshot_path = "/uploads/photos/" + req.file.filename;
     }
     await pool.query(
-      `UPDATE members SET first_name=$1, last_name=$2, role=$3, email=$4, phone=$5,
-       cred_type=$6, cred_event=$7, headshot_path=$8, updated_at=now() WHERE id=$9 AND team_id=$10`,
+      "UPDATE members SET first_name=$1, last_name=$2, role=$3, email=$4, phone=$5, " +
+      "cred_type=$6, cred_event=$7, headshot_path=$8, updated_at=now() WHERE id=$9 AND team_id=$10",
       [first_name.trim(), last_name.trim(), role || "", email || "", phone || "",
         cred_type || "Annual", cred_event || "", headshot_path, req.params.id, team.id]
     );
@@ -152,7 +168,7 @@ router.post("/credentials/request", async (req, res, next) => {
     const { cred_type, quantity, note } = req.body;
     const qty = Math.max(1, parseInt(quantity, 10) || 1);
     await pool.query(
-      `INSERT INTO credential_requests (team_id, cred_type, quantity, note) VALUES ($1,$2,$3,$4)`,
+      "INSERT INTO credential_requests (team_id, cred_type, quantity, note) VALUES ($1,$2,$3,$4)",
       [team.id, cred_type || "Annual", qty, note || ""]
     );
     res.redirect("/portal/credentials?ok=requested");
