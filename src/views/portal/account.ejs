@@ -1,0 +1,50 @@
+<%- include('../partials/head', { title, nav, active }) %>
+<div class="page-head">
+  <div>
+    <div class="kicker"><%= team ? team.name : EVENT_NAME %></div>
+    <h1>My Account</h1>
+    <div class="sub">Your own contact info and headshot — FEL Motorsports staff can see when this is filled in.</div>
+  </div>
+</div>
+
+<div class="wrap">
+  <% if (flash === 'updated') { %>
+    <div class="flash success" style="margin-top:18px">Your account has been updated.</div>
+  <% } %>
+
+  <div class="panel" style="margin-top:18px">
+    <div class="panel-body">
+      <form method="post" action="/portal/account" enctype="multipart/form-data">
+        <div class="form-grid">
+          <div class="f"><label>First name</label><input name="first_name" value="<%= member.first_name %>" required autofocus></div>
+          <div class="f"><label>Last name</label><input name="last_name" value="<%= member.last_name %>" required></div>
+          <div class="f"><label>Role / position</label><input name="role" value="<%= member.role %>" placeholder="Driver, Crew Chief, Mechanic…"></div>
+          <div class="f"><label>Email</label><input type="email" name="email" value="<%= member.email %>"></div>
+          <div class="f"><label>Phone</label><input name="phone" value="<%= member.phone %>"></div>
+          <div class="f">
+            <label>Headshot</label>
+            <input type="file" id="headshotInput" name="headshot" accept="image/*">
+            <div class="hint">A clear, front-facing photo — this is what prints on the credential card.</div>
+          </div>
+        </div>
+
+        <% if (member.headshot_path) { %>
+          <div style="margin-top:16px">
+            <span class="label">Current headshot</span>
+            <div style="margin-top:8px"><span class="avatar lg"><img src="<%= member.headshot_path %>" alt=""></span></div>
+          </div>
+        <% } %>
+        <div id="photoPreview" style="margin-top:16px;display:none">
+          <span class="label">New headshot preview</span>
+          <div style="margin-top:8px"><span class="avatar lg"><img id="photoPreviewImg" alt=""></span></div>
+        </div>
+
+        <div class="form-actions">
+          <button class="btn primary" type="submit">Save changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+<script src="/js/photo-preview.js"></script>
+<%- include('../partials/foot') %>
