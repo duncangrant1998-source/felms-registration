@@ -81,6 +81,7 @@
                 <div class="mr-role"><%= m.role || '—' %><%= m.cred_type === 'Single event' ? ' · single event' : '' %></div>
               </a>
               <div class="mr-right">
+                <span class="status-pill <%= accountComplete(m) ? 'fulfilled' : 'cancelled' %>"><%= accountComplete(m) ? 'Account Complete' : 'Missing Fields' %></span>
                 <span class="pips">
                   <span class="pip cred<%= m.cred_done ? ' on' : '' %>" title="Credential"></span>
                   <span class="pip waiver<%= m.waiver_done ? ' on' : '' %>" title="Speed waiver"></span>
