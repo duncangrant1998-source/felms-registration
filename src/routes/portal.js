@@ -402,7 +402,14 @@ router.post("/account", photoUpload.single("headshot"), async (req, res, next) =
 router.get("/documents", requirePermission("documents_view"), async (req, res, next) => {
   try {
     const team = await loadTeam(req);
-    const { rows: documents } = await pool.query("SELECT * FROM documents ORDER BY category ASC, title ASC");
+    const eventId = res.locals.currentEvent ? res.locals.currentEvent.id : null;
+    const { rows: documents } = await pool.query(
+      `SELECT documents.* FROM documents
+       WHERE NOT EXISTS (SELECT 1 FROM document_events WHERE document_events.document_id = documents.id)
+          OR EXISTS (SELECT 1 FROM document_events WHERE document_events.document_id = documents.id AND document_events.event_id = $1)
+       ORDER BY documents.category ASC, documents.title ASC`,
+      [eventId]
+    );
     const { rows: teamDocuments } = await pool.query(
       "SELECT * FROM team_documents WHERE team_id = $1 ORDER BY uploaded_at DESC", [team.id]
     );
