@@ -24,6 +24,7 @@
             <div class="mr-role"><%= m.role || '—' %></div>
           </a>
           <div class="mr-right" style="flex-wrap:wrap;justify-content:flex-end">
+            <span class="status-pill <%= accountComplete(m) ? 'fulfilled' : 'cancelled' %>"><%= accountComplete(m) ? 'Account Complete' : 'Missing Fields' %></span>
             <% events.forEach(function(e) { %>
               <% var on = attendingByEvent[e.id] && attendingByEvent[e.id].has(m.id); %>
               <span class="tag" style="<%= on ? 'border-color:var(--red-text);color:var(--red-text)' : 'opacity:.35' %>" title="<%= e.title %>"><%= e.round_label %></span>
