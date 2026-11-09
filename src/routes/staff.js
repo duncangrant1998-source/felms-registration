@@ -2,7 +2,7 @@ const express = require("express");
 const { pool } = require("../db");
 const { requireStaff } = require("../auth");
 const { photoUpload, documentUpload, PHOTO_DIR, DOC_DIR } = require("../upload");
-const { generateAccessCode, fullName, initials, fmtDate, fmtStamp, usageFromCounts } = require("../utils");
+const { generateAccessCode, fullName, initials, fmtDate, fmtStamp, usageFromCounts, accountComplete } = require("../utils");
 const path = require("path");
 const fs = require("fs");
 
@@ -143,7 +143,7 @@ router.get("/", async (req, res, next) => {
       nav: "staff",
       active: "dashboard",
       groups, totals, q: req.query.q || "", filter,
-      fullName, initials, fmtDate, fmtStamp
+      fullName, initials, fmtDate, fmtStamp, accountComplete
     });
   } catch (err) { next(err); }
 });
@@ -319,7 +319,7 @@ router.get("/teams/:id/roster", async (req, res, next) => {
     res.render("staff/team-roster", {
       title: team.name, nav: "staff", active: "teams",
       team, members, attendingByEvent, weekendBreakdown, singleSeasonTotal, singleSeasonOver,
-      log, fullName, initials, fmtStamp
+      log, fullName, initials, fmtStamp, accountComplete
     });
   } catch (err) { next(err); }
 });
