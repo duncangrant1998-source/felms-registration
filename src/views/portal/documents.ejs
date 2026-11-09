@@ -19,21 +19,19 @@
     <% if (!documents.length) { %>
       <div class="empty">No documents have been posted yet — check back closer to the event.</div>
     <% } %>
-    <% ["Sporting Regulations","Technical Regulations","Speed Waiver","Other"].forEach(function(cat) { %>
-      <% var inCat = documents.filter(function(d){ return d.category === cat; }); %>
-      <% if (inCat.length) { %>
-        <div class="group-head"><span class="g-name"><%= cat %></span></div>
-        <% inCat.forEach(function(d) { %>
-          <div class="doc-row">
-            <span class="doc-icon">📄</span>
-            <div style="flex:1;min-width:0">
-              <div class="doc-title"><%= d.title %></div>
-              <div class="doc-meta">Posted <%= fmtDate(d.uploaded_at) %></div>
-            </div>
-            <a class="btn sm" href="<%= d.storage_path %>" target="_blank" rel="noopener">View / Download</a>
-          </div>
-        <% }) %>
+    <% var lastCat = null; %>
+    <% documents.forEach(function(d) { %>
+      <% if (d.category !== lastCat) { lastCat = d.category; %>
+        <div class="group-head"><span class="g-name"><%= d.category %></span></div>
       <% } %>
+      <div class="doc-row">
+        <span class="doc-icon">📄</span>
+        <div style="flex:1;min-width:0">
+          <div class="doc-title"><%= d.title %></div>
+          <div class="doc-meta">Posted <%= fmtDate(d.uploaded_at) %></div>
+        </div>
+        <a class="btn sm" href="<%= d.storage_path %>" target="_blank" rel="noopener">View / Download</a>
+      </div>
     <% }) %>
   </div>
 
