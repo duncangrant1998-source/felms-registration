@@ -110,6 +110,15 @@ CREATE TABLE IF NOT EXISTS team_documents (
   storage_path TEXT NOT NULL,
   uploaded_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- A document with no rows here applies to every race weekend; a document with rows
+-- here is restricted to just those weekends.
+CREATE TABLE IF NOT EXISTS document_events (
+  id SERIAL PRIMARY KEY,
+  document_id INTEGER NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+  event_id INTEGER NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+  UNIQUE(document_id, event_id)
+);
 `;
 
 const EVENT_SEED = [
