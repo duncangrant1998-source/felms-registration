@@ -2,11 +2,35 @@ const express = require("express");
 const { pool } = require("../db");
 const { requireStaff } = require("../auth");
 const { photoUpload, documentUpload, PHOTO_DIR, DOC_DIR } = require("../upload");
-const { generateAccessCode, fullName, initials, fmtDate, fmtStamp, teamUsage } = require("../utils");
+const { generateAccessCode, fullName, initials, fmtDate, fmtStamp, usageFromCounts } = require("../utils");
 const path = require("path");
 const fs = require("fs");
 
 const router = express.Router();
+
+// Annual counts are scoped to the given weekend (who's attending); single-event counts are
+// season-wide attendance totals, since a team burns one single-event credential every time a
+// member attends a different weekend. Returns a map of team_id -> { annualUsed, singleUsed }.
+async function teamAttendanceCounts(eventId) {
+  const { rows: annualRows } = await pool.query(
+    `SELECT members.team_id, COUNT(*)::int AS c
+     FROM members
+     JOIN event_roster ON event_roster.member_id = members.id AND event_roster.event_id = $1
+     WHERE members.cred_type = 'Annual'
+     GROUP BY members.team_id`, [eventId]
+  );
+  const { rows: singleRows } = await pool.query(
+    `SELECT members.team_id, COUNT(*)::int AS c
+     FROM members
+     JOIN event_roster ON event_roster.member_id = members.id
+     WHERE members.cred_type = 'Single event'
+     GROUP BY members.team_id`
+  );
+  const counts = {};
+  for (const r of annualRows) (counts[r.team_id] = counts[r.team_id] || {}).annualUsed = r.c;
+  for (const r of singleRows) (counts[r.team_id] = counts[r.team_id] || {}).singleUsed = r.c;
+  return counts;
+}
 
 // ---------- Auth (unauthenticated) ----------
 router.get("/login", (req, res) => {
@@ -54,11 +78,7 @@ router.get("/", async (req, res, next) => {
 
     const eventId = res.locals.currentEvent ? res.locals.currentEvent.id : null;
     const { rows: teams } = await pool.query("SELECT * FROM teams ORDER BY name ASC");
-
-    // Allowance usage is based on the team's full season roster, not just who's attending this weekend.
-    const { rows: allMembersFull } = await pool.query("SELECT * FROM members");
-    const fullByTeam = {};
-    for (const m of allMembersFull) (fullByTeam[m.team_id] = fullByTeam[m.team_id] || []).push(m);
+    const attendanceCounts = await teamAttendanceCounts(eventId);
 
     const { rows: members } = await pool.query(
       `SELECT members.* FROM members
@@ -99,7 +119,8 @@ router.get("/", async (req, res, next) => {
     const GROUP_TYPE_ORDER = { Team: 0, Partner: 1, Sponsor: 2 };
     const groups = teams.map((team) => {
       const all = membersByTeam[team.id] || [];
-      const usage = teamUsage(team, fullByTeam[team.id] || []);
+      const c = attendanceCounts[team.id] || {};
+      const usage = usageFromCounts(team, c.annualUsed || 0, c.singleUsed || 0);
       const visible = all.filter((m) => matchesSearch(m, team) && matchesFilter(m));
       return { team, all, visible, usage };
     }).filter((g) => g.visible.length > 0 || (!q && !filter))
@@ -114,7 +135,7 @@ router.get("/", async (req, res, next) => {
       cred: allMembers.filter((m) => m.cred_done).length,
       waiver: allMembers.filter((m) => m.waiver_done).length,
       regs: allMembers.filter((m) => m.regs_done).length,
-      overTeams: teams.filter((t) => teamUsage(t, fullByTeam[t.id] || []).over).length
+      overTeams: groups.filter((g) => g.usage.over).length
     };
 
     res.render("staff/dashboard", {
@@ -201,10 +222,12 @@ router.post("/members/:id/delete", async (req, res, next) => {
 router.get("/teams", async (req, res, next) => {
   try {
     const { rows: teams } = await pool.query("SELECT * FROM teams ORDER BY name ASC");
-    const { rows: members } = await pool.query("SELECT * FROM members");
-    const membersByTeam = {};
-    for (const m of members) (membersByTeam[m.team_id] = membersByTeam[m.team_id] || []).push(m);
-    const rows = teams.map((team) => ({ team, usage: teamUsage(team, membersByTeam[team.id] || []) }));
+    const eventId = res.locals.currentEvent ? res.locals.currentEvent.id : null;
+    const attendanceCounts = await teamAttendanceCounts(eventId);
+    const rows = teams.map((team) => {
+      const c = attendanceCounts[team.id] || {};
+      return { team, usage: usageFromCounts(team, c.annualUsed || 0, c.singleUsed || 0) };
+    });
     res.render("staff/teams", { title: "Teams & Allowances", nav: "staff", active: "teams", rows });
   } catch (err) { next(err); }
 });
