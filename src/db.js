@@ -95,6 +95,12 @@ CREATE TABLE IF NOT EXISTS event_roster_log (
 );
 
 ALTER TABLE event_roster_log ADD COLUMN IF NOT EXISTS cred_type TEXT NOT NULL DEFAULT 'Annual';
+
+ALTER TABLE members ADD COLUMN IF NOT EXISTS username TEXT;
+ALTER TABLE members ADD COLUMN IF NOT EXISTS password_hash TEXT;
+ALTER TABLE members ADD COLUMN IF NOT EXISTS is_admin BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE members ADD COLUMN IF NOT EXISTS permissions JSONB NOT NULL DEFAULT '{}'::jsonb;
+CREATE UNIQUE INDEX IF NOT EXISTS members_username_idx ON members (username) WHERE username IS NOT NULL;
 `;
 
 const EVENT_SEED = [
