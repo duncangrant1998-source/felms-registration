@@ -66,9 +66,20 @@ router.get("/", async (req, res, next) => {
        ORDER BY members.last_name ASC, members.first_name ASC`, [eventId]
     );
 
+    // Single-event credential holders surface first within a team, then everyone else alphabetically by last name.
+    function byCredThenName(a, b) {
+      const aSingle = a.cred_type === "Single event" ? 0 : 1;
+      const bSingle = b.cred_type === "Single event" ? 0 : 1;
+      if (aSingle !== bSingle) return aSingle - bSingle;
+      return a.last_name.localeCompare(b.last_name) || a.first_name.localeCompare(b.first_name);
+    }
+
     const membersByTeam = {};
     for (const m of members) {
       (membersByTeam[m.team_id] = membersByTeam[m.team_id] || []).push(m);
+    }
+    for (const teamId of Object.keys(membersByTeam)) {
+      membersByTeam[teamId].sort(byCredThenName);
     }
 
     function matchesSearch(m, team) {
@@ -84,12 +95,18 @@ router.get("/", async (req, res, next) => {
       return true;
     }
 
+    // Teams group first, then partners, then sponsors.
+    const GROUP_TYPE_ORDER = { Team: 0, Partner: 1, Sponsor: 2 };
     const groups = teams.map((team) => {
       const all = membersByTeam[team.id] || [];
       const usage = teamUsage(team, fullByTeam[team.id] || []);
       const visible = all.filter((m) => matchesSearch(m, team) && matchesFilter(m));
       return { team, all, visible, usage };
-    }).filter((g) => g.visible.length > 0 || (!q && !filter));
+    }).filter((g) => g.visible.length > 0 || (!q && !filter))
+      .sort((a, b) => {
+        const order = (GROUP_TYPE_ORDER[a.team.group_type] ?? 99) - (GROUP_TYPE_ORDER[b.team.group_type] ?? 99);
+        return order !== 0 ? order : a.team.name.localeCompare(b.team.name);
+      });
 
     const allMembers = members;
     const totals = {
@@ -257,16 +274,29 @@ router.get("/teams/:id/roster", async (req, res, next) => {
       (attendingByEvent[r.event_id] = attendingByEvent[r.event_id] || new Set()).add(r.member_id);
     }
 
+    // Per-weekend annual usage, plus a season-wide single-event total (matches the team portal's own math).
+    const weekendBreakdown = res.locals.events.map((e) => {
+      const ids = attendingByEvent[e.id] || new Set();
+      const annualCount = members.filter((m) => ids.has(m.id) && m.cred_type === "Annual").length;
+      const singleCount = members.filter((m) => ids.has(m.id) && m.cred_type === "Single event").length;
+      const annualOver = team.annual_limit != null && annualCount > team.annual_limit;
+      return { event: e, annualCount, singleCount, annualOver };
+    });
+    const singleSeasonTotal = weekendBreakdown.reduce((sum, w) => sum + w.singleCount, 0);
+    const singleSeasonOver = team.single_limit != null && singleSeasonTotal > team.single_limit;
+
+    const eventId = res.locals.currentEvent ? res.locals.currentEvent.id : null;
     const { rows: log } = await pool.query(
       `SELECT event_roster_log.*, events.round_label, events.title AS event_title
        FROM event_roster_log JOIN events ON events.id = event_roster_log.event_id
-       WHERE event_roster_log.team_id = $1
-       ORDER BY event_roster_log.changed_at DESC LIMIT 200`, [team.id]
+       WHERE event_roster_log.team_id = $1 AND event_roster_log.event_id = $2
+       ORDER BY event_roster_log.changed_at DESC LIMIT 200`, [team.id, eventId]
     );
 
     res.render("staff/team-roster", {
       title: team.name, nav: "staff", active: "teams",
-      team, members, attendingByEvent, log, fullName, initials, fmtStamp
+      team, members, attendingByEvent, weekendBreakdown, singleSeasonTotal, singleSeasonOver,
+      log, fullName, initials, fmtStamp
     });
   } catch (err) { next(err); }
 });
