@@ -25,10 +25,11 @@
     { key: "documents", label: "Documents", href: "/staff/documents" }
   ];
   var PORTAL_TABS = [
-    { key: "roster", label: "Weekend Roster", href: "/portal" },
-    { key: "credentials", label: "Credentials", href: "/portal/credentials" },
-    { key: "documents", label: "Documents", href: "/portal/documents" }
+    { key: "roster", label: "Weekend Roster", href: "/portal", perm: "weekend_view" },
+    { key: "credentials", label: "Credentials", href: "/portal/credentials", perm: "credentials_view" },
+    { key: "documents", label: "Documents", href: "/portal/documents", perm: "documents_view" }
   ];
+  var canSee = typeof can === "function" ? can : function () { return true; };
 %>
 <% if (typeof nav !== "undefined" && (nav === "staff" || nav === "portal")) { %>
   <div class="felm-shell">
@@ -80,13 +81,13 @@
               </div>
             </details>
           <% } %>
-          <% if (nav === "portal") { %>
+          <% if (nav === "portal" && canSee("roster_view")) { %>
             <a href="/portal/members" class="btn sm felm-myroster-btn">My Roster</a>
           <% } %>
         </div>
       <% } %>
       <nav class="felm-subnav">
-        <% (nav === "staff" ? STAFF_TABS : PORTAL_TABS).forEach(function(t) { %>
+        <% (nav === "staff" ? STAFF_TABS : PORTAL_TABS.filter(function(t){ return canSee(t.perm); })).forEach(function(t) { %>
           <a href="<%= t.href %>" class="sn-link <%= active === t.key ? 'active' : '' %>"><%- t.label %></a>
         <% }) %>
       </nav>
