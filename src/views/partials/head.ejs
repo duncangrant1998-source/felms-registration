@@ -30,6 +30,7 @@
     { key: "documents", label: "Documents", href: "/portal/documents", perm: "documents_view" }
   ];
   var canSee = typeof can === "function" ? can : function () { return true; };
+  var hasMember = typeof currentMember !== "undefined" && currentMember;
 %>
 <% if (typeof nav !== "undefined" && (nav === "staff" || nav === "portal")) { %>
   <div class="felm-shell">
@@ -83,6 +84,9 @@
           <% } %>
           <% if (nav === "portal" && canSee("roster_view")) { %>
             <a href="/portal/members" class="btn sm felm-myroster-btn">My Roster</a>
+          <% } %>
+          <% if (nav === "portal" && hasMember) { %>
+            <a href="/portal/account" class="btn sm felm-myroster-btn <%= active === 'account' ? 'primary' : '' %>">My Account</a>
           <% } %>
         </div>
       <% } %>
