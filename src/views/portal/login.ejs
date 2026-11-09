@@ -3,15 +3,32 @@
   <div class="auth-card">
     <div class="m-logo">FEL</div>
     <h1>Team Sign In</h1>
-    <div class="sub">Enter the access code FEL Motorsports gave your team to manage your roster.</div>
+    <div class="sub">Sign in with your personal login, or your team's access code if you're a team admin without one yet.</div>
     <% if (error) { %><div class="auth-error"><%= error %></div><% } %>
-    <form method="post" action="/portal/login">
+
+    <form method="post" action="/portal/member-login">
       <div class="f">
-        <label for="access_code">Team access code</label>
-        <input type="text" id="access_code" name="access_code" placeholder="FEL-7K2Q9R" autofocus required autocomplete="off">
+        <label for="username">Username</label>
+        <input type="text" id="username" name="username" placeholder="jesse.lambert" autofocus required autocomplete="off">
+      </div>
+      <div class="f">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" required autocomplete="off">
       </div>
       <button class="btn primary" type="submit">Sign In</button>
     </form>
+
+    <details style="margin-top:20px">
+      <summary class="hint" style="cursor:pointer">Signing in as a team admin with an access code instead?</summary>
+      <form method="post" action="/portal/login" style="margin-top:14px">
+        <div class="f">
+          <label for="access_code">Team access code</label>
+          <input type="text" id="access_code" name="access_code" placeholder="FEL-7K2Q9R" required autocomplete="off">
+        </div>
+        <button class="btn" type="submit">Sign In With Access Code</button>
+      </form>
+    </details>
+
     <div class="landing-links"><a class="btn ghost" href="/">Back</a></div>
   </div>
 </div>
