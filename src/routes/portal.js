@@ -126,17 +126,17 @@ router.post("/roster/toggle", async (req, res, next) => {
     if (existing.length) {
       await pool.query("DELETE FROM event_roster WHERE event_id = $1 AND member_id = $2", [eventId, memberId]);
       await pool.query(
-        `INSERT INTO event_roster_log (event_id, team_id, member_id, member_name, action)
-         VALUES ($1,$2,$3,$4,'removed')`,
-        [eventId, team.id, memberId, fullName(member)]
+        `INSERT INTO event_roster_log (event_id, team_id, member_id, member_name, cred_type, action)
+         VALUES ($1,$2,$3,$4,$5,'removed')`,
+        [eventId, team.id, memberId, fullName(member), member.cred_type]
       );
       return res.redirect("/portal?ok=notattending");
     }
     await pool.query("INSERT INTO event_roster (event_id, member_id) VALUES ($1,$2)", [eventId, memberId]);
     await pool.query(
-      `INSERT INTO event_roster_log (event_id, team_id, member_id, member_name, action)
-       VALUES ($1,$2,$3,$4,'added')`,
-      [eventId, team.id, memberId, fullName(member)]
+      `INSERT INTO event_roster_log (event_id, team_id, member_id, member_name, cred_type, action)
+       VALUES ($1,$2,$3,$4,$5,'added')`,
+      [eventId, team.id, memberId, fullName(member), member.cred_type]
     );
     res.redirect("/portal?ok=attending");
   } catch (err) { next(err); }
