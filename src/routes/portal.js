@@ -4,7 +4,10 @@ const fs = require("fs");
 const { pool } = require("../db");
 const { requireTeam } = require("../auth");
 const { photoUpload, PHOTO_DIR } = require("../upload");
-const { fullName, initials, fmtDate } = require("../utils");
+const {
+  fullName, initials, fmtDate,
+  PERMISSIONS, permissionCategories, usernameSlug, generatePassword, hashPassword, verifyPassword
+} = require("../utils");
 
 const router = express.Router();
 
@@ -26,12 +29,61 @@ router.post("/login", async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+router.post("/member-login", async (req, res, next) => {
+  try {
+    const username = (req.body.username || "").trim().toLowerCase();
+    const password = req.body.password || "";
+    const { rows } = await pool.query("SELECT * FROM members WHERE LOWER(username) = $1", [username]);
+    const member = rows[0];
+    const ok = member && (await verifyPassword(password, member.password_hash));
+    if (!ok) {
+      return res.render("portal/login", { title: "Team Login", error: "That username or password wasn't recognized.", nav: null });
+    }
+    req.session.teamId = member.team_id;
+    req.session.memberId = member.id;
+    res.redirect("/portal");
+  } catch (err) { next(err); }
+});
+
 router.get("/logout", (req, res) => {
   req.session.teamId = null;
+  req.session.memberId = null;
   res.redirect("/portal/login");
 });
 
 router.use(requireTeam);
+
+// Loads which member (if any) is behind this session, and whether it has admin access.
+// Sessions started with the legacy team access code have no memberId and are treated as
+// full admin, same as a team admin account, so the team is never locked out.
+router.use(async (req, res, next) => {
+  try {
+    let currentMember = null;
+    if (req.session.memberId) {
+      const { rows } = await pool.query(
+        "SELECT * FROM members WHERE id = $1 AND team_id = $2", [req.session.memberId, req.session.teamId]
+      );
+      currentMember = rows[0] || null;
+      if (!currentMember) req.session.memberId = null;
+    }
+    res.locals.currentMember = currentMember;
+    res.locals.isAdmin = !currentMember || currentMember.is_admin;
+    res.locals.can = (key) => res.locals.isAdmin || !!(currentMember && currentMember.permissions && currentMember.permissions[key]);
+    next();
+  } catch (err) { next(err); }
+});
+
+function requirePermission(key) {
+  return (req, res, next) => {
+    if (res.locals.can(key)) return next();
+    res.status(403).render("error", { title: "No access", message: "Your account doesn't have permission to view this page. Ask your team admin for access." });
+  };
+}
+
+function requireAdmin(req, res, next) {
+  if (res.locals.isAdmin) return next();
+  res.status(403).render("error", { title: "No access", message: "Only team admins can manage logins and permissions." });
+}
 
 async function loadTeam(req) {
   const { rows } = await pool.query("SELECT * FROM teams WHERE id = $1", [req.session.teamId]);
@@ -84,7 +136,7 @@ router.post("/event", (req, res) => {
 });
 
 // ---------- Weekend roster: who's attending the currently-selected event ----------
-router.get("/", async (req, res, next) => {
+router.get("/", requirePermission("weekend_view"), async (req, res, next) => {
   try {
     const team = await loadTeam(req);
     if (!team) { req.session.teamId = null; return res.redirect("/portal/login"); }
@@ -108,7 +160,7 @@ router.get("/", async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-router.post("/roster/toggle", async (req, res, next) => {
+router.post("/roster/toggle", requirePermission("weekend_toggle"), async (req, res, next) => {
   try {
     const team = await loadTeam(req);
     const eventId = res.locals.currentEvent ? res.locals.currentEvent.id : null;
@@ -143,7 +195,7 @@ router.post("/roster/toggle", async (req, res, next) => {
 });
 
 // ---------- My Roster: the team's full season roster ----------
-router.get("/members", async (req, res, next) => {
+router.get("/members", requirePermission("roster_view"), async (req, res, next) => {
   try {
     const team = await loadTeam(req);
     const { rows: members } = await pool.query(
@@ -157,30 +209,52 @@ router.get("/members", async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-router.get("/members/new", async (req, res, next) => {
+router.get("/members/new", requirePermission("roster_add"), async (req, res, next) => {
   try {
     const team = await loadTeam(req);
     res.render("portal/member-form", { title: "Add Team Member", nav: "portal", active: "members", team, member: null });
   } catch (err) { next(err); }
 });
 
-router.post("/members", photoUpload.single("headshot"), async (req, res, next) => {
+router.post("/members", requirePermission("roster_add"), photoUpload.single("headshot"), async (req, res, next) => {
   try {
     const team = await loadTeam(req);
     const { first_name, last_name, role, email, phone, cred_type, cred_event } = req.body;
     if (!first_name || !last_name) return res.redirect("/portal/members/new");
     const headshot_path = req.file ? `/uploads/photos/${req.file.filename}` : "";
-    await pool.query(
-      `INSERT INTO members (team_id, first_name, last_name, role, email, phone, cred_type, cred_event, headshot_path)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+
+    // The very first member added to an empty roster becomes the team's first admin,
+    // since nobody else could have an account yet to grant them one.
+    const { rows: countRows } = await pool.query("SELECT COUNT(*)::int AS c FROM members WHERE team_id = $1", [team.id]);
+    const isFirstMember = countRows[0].c === 0;
+
+    const base = usernameSlug(first_name, last_name);
+    let username = base;
+    let suffix = 1;
+    while (true) {
+      const { rows: existing } = await pool.query("SELECT 1 FROM members WHERE LOWER(username) = $1", [username]);
+      if (!existing.length) break;
+      suffix += 1;
+      username = `${base}${suffix}`;
+    }
+    const password = generatePassword();
+    const password_hash = await hashPassword(password);
+
+    const { rows: inserted } = await pool.query(
+      `INSERT INTO members (team_id, first_name, last_name, role, email, phone, cred_type, cred_event, headshot_path, username, password_hash, is_admin)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
       [team.id, first_name.trim(), last_name.trim(), role || "", email || "", phone || "",
-        cred_type || "Annual", cred_event || "", headshot_path]
+        cred_type || "Annual", cred_event || "", headshot_path, username, password_hash, isFirstMember]
     );
-    res.redirect("/portal/members?ok=added");
+    const member = inserted[0];
+    res.render("portal/member-created", {
+      title: "Team Member Added", nav: "portal", active: "members",
+      team, member, username, password, fullName, reset: false
+    });
   } catch (err) { next(err); }
 });
 
-router.get("/members/:id/edit", async (req, res, next) => {
+router.get("/members/:id/edit", requirePermission("roster_edit"), async (req, res, next) => {
   try {
     const team = await loadTeam(req);
     const { rows } = await pool.query(
@@ -192,7 +266,7 @@ router.get("/members/:id/edit", async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-router.post("/members/:id/update", photoUpload.single("headshot"), async (req, res, next) => {
+router.post("/members/:id/update", requirePermission("roster_edit"), photoUpload.single("headshot"), async (req, res, next) => {
   try {
     const team = await loadTeam(req);
     const { rows } = await pool.query(
@@ -217,21 +291,85 @@ router.post("/members/:id/update", photoUpload.single("headshot"), async (req, r
   } catch (err) { next(err); }
 });
 
-router.post("/members/:id/delete", async (req, res, next) => {
+router.post("/members/:id/delete", requirePermission("roster_remove"), async (req, res, next) => {
   try {
     const team = await loadTeam(req);
     const { rows } = await pool.query(
       "SELECT * FROM members WHERE id = $1 AND team_id = $2", [req.params.id, team.id]
     );
     const m = rows[0];
-    if (m && m.headshot_path) fs.unlink(path.join(PHOTO_DIR, path.basename(m.headshot_path)), () => {});
+    if (!m) return res.redirect("/portal/members");
+    if (m.is_admin) {
+      const { rows: adminRows } = await pool.query(
+        "SELECT COUNT(*)::int AS c FROM members WHERE team_id = $1 AND is_admin = true AND id != $2", [team.id, m.id]
+      );
+      if (adminRows[0].c === 0) return res.redirect("/portal/members?ok=lastadmin");
+    }
+    if (m.headshot_path) fs.unlink(path.join(PHOTO_DIR, path.basename(m.headshot_path)), () => {});
     await pool.query("DELETE FROM members WHERE id = $1 AND team_id = $2", [req.params.id, team.id]);
     res.redirect("/portal/members?ok=removed");
   } catch (err) { next(err); }
 });
 
+// ---------- Permissions: team admins control what each non-admin member can access ----------
+router.get("/members/:id/permissions", requireAdmin, async (req, res, next) => {
+  try {
+    const team = await loadTeam(req);
+    const { rows } = await pool.query("SELECT * FROM members WHERE id = $1 AND team_id = $2", [req.params.id, team.id]);
+    const member = rows[0];
+    if (!member) return res.status(404).render("error", { title: "Not found", message: "Member not found." });
+    res.render("portal/permissions", {
+      title: `Permissions — ${fullName(member)}`, nav: "portal", active: "members",
+      team, member, categories: permissionCategories(), fullName,
+      err: req.query.err || null
+    });
+  } catch (err) { next(err); }
+});
+
+router.post("/members/:id/permissions", requireAdmin, async (req, res, next) => {
+  try {
+    const team = await loadTeam(req);
+    const { rows } = await pool.query("SELECT * FROM members WHERE id = $1 AND team_id = $2", [req.params.id, team.id]);
+    const member = rows[0];
+    if (!member) return res.status(404).render("error", { title: "Not found", message: "Member not found." });
+
+    const makeAdmin = req.body.is_admin === "1";
+    if (member.is_admin && !makeAdmin) {
+      const { rows: adminRows } = await pool.query(
+        "SELECT COUNT(*)::int AS c FROM members WHERE team_id = $1 AND is_admin = true AND id != $2", [team.id, member.id]
+      );
+      if (adminRows[0].c === 0) return res.redirect(`/portal/members/${member.id}/permissions?err=lastadmin`);
+    }
+
+    const permissions = {};
+    for (const p of PERMISSIONS) permissions[p.key] = req.body[`perm_${p.key}`] === "1";
+
+    await pool.query(
+      "UPDATE members SET is_admin = $1, permissions = $2, updated_at = now() WHERE id = $3",
+      [makeAdmin, JSON.stringify(permissions), member.id]
+    );
+    res.redirect("/portal/members?ok=permissions");
+  } catch (err) { next(err); }
+});
+
+router.post("/members/:id/reset-password", requireAdmin, async (req, res, next) => {
+  try {
+    const team = await loadTeam(req);
+    const { rows } = await pool.query("SELECT * FROM members WHERE id = $1 AND team_id = $2", [req.params.id, team.id]);
+    const member = rows[0];
+    if (!member) return res.status(404).render("error", { title: "Not found", message: "Member not found." });
+    const password = generatePassword();
+    const password_hash = await hashPassword(password);
+    await pool.query("UPDATE members SET password_hash = $1, updated_at = now() WHERE id = $2", [password_hash, member.id]);
+    res.render("portal/member-created", {
+      title: "Login Reset", nav: "portal", active: "members",
+      team, member, username: member.username, password, fullName, reset: true
+    });
+  } catch (err) { next(err); }
+});
+
 // ---------- Documents (read-only) ----------
-router.get("/documents", async (req, res, next) => {
+router.get("/documents", requirePermission("documents_view"), async (req, res, next) => {
   try {
     const { rows: documents } = await pool.query("SELECT * FROM documents ORDER BY category ASC, title ASC");
     res.render("portal/documents", { title: "Documents", nav: "portal", active: "documents", documents, fmtDate });
@@ -239,7 +377,7 @@ router.get("/documents", async (req, res, next) => {
 });
 
 // ---------- Credentials / allowance / purchase requests ----------
-router.get("/credentials", async (req, res, next) => {
+router.get("/credentials", requirePermission("credentials_view"), async (req, res, next) => {
   try {
     const team = await loadTeam(req);
     const eventId = res.locals.currentEvent ? res.locals.currentEvent.id : null;
@@ -254,7 +392,7 @@ router.get("/credentials", async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-router.post("/credentials/request", async (req, res, next) => {
+router.post("/credentials/request", requirePermission("credentials_request"), async (req, res, next) => {
   try {
     const team = await loadTeam(req);
     const { cred_type, quantity, note } = req.body;
