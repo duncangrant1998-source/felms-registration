@@ -363,7 +363,18 @@ router.post("/cards/mark-printed", async (req, res, next) => {
 router.get("/documents", async (req, res, next) => {
   try {
     const { rows: documents } = await pool.query("SELECT * FROM documents ORDER BY category ASC, title ASC");
-    res.render("staff/documents", { title: "Documents", nav: "staff", active: "documents", documents, fmtDate });
+    const { rows: deRows } = await pool.query(
+      `SELECT document_events.document_id, events.round_label
+       FROM document_events JOIN events ON events.id = document_events.event_id
+       ORDER BY events.sort_order ASC`
+    );
+    const scopeByDoc = {};
+    for (const r of deRows) (scopeByDoc[r.document_id] = scopeByDoc[r.document_id] || []).push(r.round_label);
+    const categories = [...new Set(documents.map((d) => d.category))];
+    res.render("staff/documents", {
+      title: "Documents", nav: "staff", active: "documents",
+      documents, scopeByDoc, categories, fmtDate
+    });
   } catch (err) { next(err); }
 });
 
@@ -371,10 +382,21 @@ router.post("/documents", documentUpload.single("file"), async (req, res, next) 
   try {
     if (!req.file) return res.redirect("/staff/documents");
     const { title, category } = req.body;
-    await pool.query(
-      `INSERT INTO documents (title, category, original_name, storage_path) VALUES ($1,$2,$3,$4)`,
+    const scope = req.body.scope === "specific" ? "specific" : "all";
+    let eventIds = req.body.event_ids || [];
+    if (!Array.isArray(eventIds)) eventIds = [eventIds];
+
+    const { rows: inserted } = await pool.query(
+      `INSERT INTO documents (title, category, original_name, storage_path) VALUES ($1,$2,$3,$4) RETURNING id`,
       [title || req.file.originalname, category || "Other", req.file.originalname, `/uploads/documents/${req.file.filename}`]
     );
+    const docId = inserted[0].id;
+    if (scope === "specific" && eventIds.length) {
+      for (const eid of eventIds) {
+        const id = parseInt(eid, 10);
+        if (id) await pool.query("INSERT INTO document_events (document_id, event_id) VALUES ($1,$2) ON CONFLICT DO NOTHING", [docId, id]);
+      }
+    }
     res.redirect("/staff/documents");
   } catch (err) { next(err); }
 });
