@@ -368,6 +368,36 @@ router.post("/members/:id/reset-password", requireAdmin, async (req, res, next) 
   } catch (err) { next(err); }
 });
 
+// ---------- My Account: a member's own contact info, filled in after an admin creates them ----------
+router.get("/account", async (req, res, next) => {
+  try {
+    if (!res.locals.currentMember) return res.status(404).render("error", { title: "Not found", message: "There's no personal account for this login." });
+    const team = await loadTeam(req);
+    res.render("portal/account", {
+      title: "My Account", nav: "portal", active: "account",
+      team, member: res.locals.currentMember, flash: req.query.ok || null
+    });
+  } catch (err) { next(err); }
+});
+
+router.post("/account", photoUpload.single("headshot"), async (req, res, next) => {
+  try {
+    if (!res.locals.currentMember) return res.redirect("/portal");
+    const member = res.locals.currentMember;
+    const { first_name, last_name, role, email, phone } = req.body;
+    let headshot_path = member.headshot_path;
+    if (req.file) {
+      if (member.headshot_path) fs.unlink(path.join(PHOTO_DIR, path.basename(member.headshot_path)), () => {});
+      headshot_path = `/uploads/photos/${req.file.filename}`;
+    }
+    await pool.query(
+      `UPDATE members SET first_name=$1, last_name=$2, role=$3, email=$4, phone=$5, headshot_path=$6, updated_at=now() WHERE id=$7`,
+      [first_name.trim(), last_name.trim(), role || "", email || "", phone || "", headshot_path, member.id]
+    );
+    res.redirect("/portal/account?ok=updated");
+  } catch (err) { next(err); }
+});
+
 // ---------- Documents (read-only) ----------
 router.get("/documents", requirePermission("documents_view"), async (req, res, next) => {
   try {
