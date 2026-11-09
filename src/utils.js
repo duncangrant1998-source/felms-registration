@@ -101,6 +101,13 @@ function usageFromCounts(team, annualUsed, singleUsed) {
   };
 }
 
+// A member's own account page fills in email/phone/headshot — the admin who creates the
+// roster entry only supplies name and credential type. Staff use this to follow up with
+// teams whose members haven't finished setting up their accounts yet.
+function accountComplete(m) {
+  return !!(m.first_name && m.last_name && m.email && m.phone && m.headshot_path);
+}
+
 function escapeHtml(str) {
   return String(str || "").replace(/[&<>"']/g, (c) => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
@@ -109,5 +116,6 @@ function escapeHtml(str) {
 
 module.exports = {
   generateAccessCode, fullName, initials, fmtDate, fmtStamp, usageFromCounts, escapeHtml,
-  PERMISSIONS, permissionCategories, usernameSlug, generatePassword, hashPassword, verifyPassword
+  PERMISSIONS, permissionCategories, usernameSlug, generatePassword, hashPassword, verifyPassword,
+  accountComplete
 };
