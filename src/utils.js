@@ -30,9 +30,11 @@ function fmtStamp(d) {
   });
 }
 
-function teamUsage(team, members) {
-  const annualUsed = members.filter((m) => m.cred_type === "Annual").length;
-  const singleUsed = members.filter((m) => m.cred_type === "Single event").length;
+// Annual credentials are counted per weekend (who's actually attending the currently
+// selected weekend); single-event credentials are counted across the whole season, since
+// a team burns one single-event credential each time a member attends a different weekend.
+// annualUsed/singleUsed here are pre-counted attendance totals, not roster member counts.
+function usageFromCounts(team, annualUsed, singleUsed) {
   const annualOver = team.annual_limit != null && annualUsed > team.annual_limit;
   const singleOver = team.single_limit != null && singleUsed > team.single_limit;
   return {
@@ -52,4 +54,4 @@ function escapeHtml(str) {
   }[c]));
 }
 
-module.exports = { generateAccessCode, fullName, initials, fmtDate, fmtStamp, teamUsage, escapeHtml };
+module.exports = { generateAccessCode, fullName, initials, fmtDate, fmtStamp, usageFromCounts, escapeHtml };
