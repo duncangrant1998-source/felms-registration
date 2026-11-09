@@ -1,0 +1,61 @@
+<%- include('../partials/head', { title, nav, active }) %>
+<div class="page-head">
+  <div>
+    <div class="kicker"><a href="/portal/members" style="color:var(--muted);text-decoration:none">&larr; <%= team.name %> roster</a></div>
+    <h1>Permissions — <%= fullName(member) %></h1>
+    <div class="sub">Control what <%= fullName(member) %> can see and do when they sign in. Team admins always have full access.</div>
+  </div>
+</div>
+
+<div class="wrap">
+  <% if (err === 'lastadmin') { %>
+    <div class="flash" style="margin-top:18px;background:rgba(255,69,75,.1);border-color:rgba(255,69,75,.4);color:#FF8A9B">
+      This is the only team admin — promote someone else to admin before removing admin access here.
+    </div>
+  <% } %>
+
+  <div class="panel" style="margin-top:18px">
+    <div class="panel-head"><h2>Account</h2></div>
+    <div class="panel-body">
+      <div class="info-grid">
+        <div class="info"><span class="label">Username</span><div class="i-val"><%= member.username || '—' %></div></div>
+        <div class="info"><span class="label">Status</span><div class="i-val"><%= member.is_admin ? 'Team admin' : 'Standard member' %></div></div>
+      </div>
+      <form class="inline" method="post" action="/portal/members/<%= member.id %>/reset-password" style="margin-top:16px" onsubmit="return confirm('Generate a new password for this member? Their old password will stop working.');">
+        <button class="btn sm" type="submit">Reset Login</button>
+      </form>
+    </div>
+  </div>
+
+  <form method="post" action="/portal/members/<%= member.id %>/permissions">
+    <div class="panel" style="margin-top:18px">
+      <div class="panel-head"><h2>Team admin</h2></div>
+      <div class="panel-body">
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+          <input type="checkbox" name="is_admin" value="1" <%= member.is_admin ? 'checked' : '' %> style="width:18px;height:18px">
+          <span>Team admin — full access to everything below, plus managing other members' permissions</span>
+        </label>
+      </div>
+    </div>
+
+    <% categories.forEach(function(cat) { %>
+      <div class="panel" style="margin-top:18px">
+        <div class="panel-head"><h2><%= cat.name %></h2></div>
+        <div class="panel-body" style="display:flex;flex-direction:column;gap:12px">
+          <% cat.items.forEach(function(p) { %>
+            <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+              <input type="checkbox" name="perm_<%= p.key %>" value="1" <%= (member.permissions && member.permissions[p.key]) ? 'checked' : '' %> style="width:18px;height:18px">
+              <span><%= p.label %></span>
+            </label>
+          <% }) %>
+        </div>
+      </div>
+    <% }) %>
+
+    <div class="form-actions" style="margin-top:18px">
+      <a class="btn" href="/portal/members">Cancel</a>
+      <button class="btn primary" type="submit">Save Permissions</button>
+    </div>
+  </form>
+</div>
+<%- include('../partials/foot') %>
