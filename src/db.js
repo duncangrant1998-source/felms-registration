@@ -101,6 +101,15 @@ ALTER TABLE members ADD COLUMN IF NOT EXISTS password_hash TEXT;
 ALTER TABLE members ADD COLUMN IF NOT EXISTS is_admin BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE members ADD COLUMN IF NOT EXISTS permissions JSONB NOT NULL DEFAULT '{}'::jsonb;
 CREATE UNIQUE INDEX IF NOT EXISTS members_username_idx ON members (username) WHERE username IS NOT NULL;
+
+CREATE TABLE IF NOT EXISTS team_documents (
+  id SERIAL PRIMARY KEY,
+  team_id INTEGER NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  original_name TEXT NOT NULL,
+  storage_path TEXT NOT NULL,
+  uploaded_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
 `;
 
 const EVENT_SEED = [
