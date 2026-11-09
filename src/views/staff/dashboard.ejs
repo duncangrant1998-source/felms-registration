@@ -55,8 +55,8 @@
     <div class="panel" style="margin-top:18px"><div class="empty">No members match. Try clearing filters, or add teams under <a href="/staff/teams">Teams &amp; Allowances</a>.</div></div>
   <% } else { %>
     <% groups.forEach(function(g) { %>
-      <div class="panel" style="margin-top:18px">
-        <div class="group-head">
+      <details class="panel group-panel" style="margin-top:18px">
+        <summary class="group-head">
           <span class="tag gt-<%= g.team.group_type.toLowerCase() %>"><%= g.team.group_type %></span>
           <span class="g-name"><%= g.team.name %></span>
           <span class="g-count"><%= g.visible.length %> of <%= g.all.length %> shown</span>
@@ -68,7 +68,8 @@
             Annual <%= g.usage.annualUsed %><%= g.usage.annualLimit != null ? '/' + g.usage.annualLimit : '' %>
             &nbsp;·&nbsp; Single <%= g.usage.singleUsed %><%= g.usage.singleLimit != null ? '/' + g.usage.singleLimit : '' %>
           </span>
-        </div>
+          <svg class="ep-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+        </summary>
         <div class="rowlist">
           <% g.visible.forEach(function(m) { %>
             <div class="mrow">
@@ -90,7 +91,7 @@
             </div>
           <% }) %>
         </div>
-      </div>
+      </details>
     <% }) %>
   <% } %>
 </div>
