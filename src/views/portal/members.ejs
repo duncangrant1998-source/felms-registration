@@ -6,16 +6,18 @@
     <div class="sub">Your full team roster for the season — add drivers and crew here once. Use Weekend Roster to choose who's attending each race weekend.</div>
   </div>
   <div class="page-actions">
-    <a class="btn primary" href="/portal/members/new">Add Team Member</a>
+    <% if (can('roster_add')) { %><a class="btn primary" href="/portal/members/new">Add Team Member</a><% } %>
   </div>
 </div>
 
 <div class="wrap">
   <% if (flash) { %>
-    <div class="flash success" style="margin-top:18px">
+    <div class="flash <%= flash==='lastadmin' ? '' : 'success' %>" style="margin-top:18px<%= flash==='lastadmin' ? ';background:rgba(255,69,75,.1);border-color:rgba(255,69,75,.4);color:#FF8A9B' : '' %>">
       <% if (flash==='added') { %>Team member added.<% } %>
       <% if (flash==='updated') { %>Team member updated.<% } %>
       <% if (flash==='removed') { %>Team member removed.<% } %>
+      <% if (flash==='permissions') { %>Permissions updated.<% } %>
+      <% if (flash==='lastadmin') { %>Can't remove the only team admin — promote someone else first.<% } %>
     </div>
   <% } %>
 
@@ -31,8 +33,11 @@
             <% if (m.headshot_path) { %><img src="<%= m.headshot_path %>" alt=""><% } else { %><%= initials(m) %><% } %>
           </span>
           <div style="min-width:0">
-            <div class="mr-name"><%= fullName(m) %></div>
-            <div class="mr-role"><%= m.role || '—' %><%= m.cred_type === 'Single event' ? ' · single event' : '' %></div>
+            <div class="mr-name"><%= fullName(m) %><% if (m.is_admin) { %> <span class="tag" style="border-color:var(--red-text);color:var(--red-text)">Admin</span><% } %></div>
+            <div class="mr-role">
+              <%= m.role || '—' %><%= m.cred_type === 'Single event' ? ' · single event' : '' %>
+              <%= m.username ? ' · @' + m.username : '' %>
+            </div>
           </div>
           <div class="mr-right">
             <span class="pips">
@@ -40,10 +45,13 @@
               <span class="pip waiver<%= m.waiver_done ? ' on' : '' %>" title="Speed waiver"></span>
               <span class="pip regs<%= m.regs_done ? ' on' : '' %>" title="Regs acknowledged"></span>
             </span>
-            <a class="btn sm" href="/portal/members/<%= m.id %>/edit">Edit</a>
-            <form class="inline" method="post" action="/portal/members/<%= m.id %>/delete" onsubmit="return confirm('Remove this team member? This also removes them from any weekend rosters.');">
-              <button class="btn sm danger" type="submit">Remove</button>
-            </form>
+            <% if (isAdmin) { %><a class="btn sm" href="/portal/members/<%= m.id %>/permissions">Permissions</a><% } %>
+            <% if (can('roster_edit')) { %><a class="btn sm" href="/portal/members/<%= m.id %>/edit">Edit</a><% } %>
+            <% if (can('roster_remove')) { %>
+              <form class="inline" method="post" action="/portal/members/<%= m.id %>/delete" onsubmit="return confirm('Remove this team member? This also removes them from any weekend rosters.');">
+                <button class="btn sm danger" type="submit">Remove</button>
+              </form>
+            <% } %>
           </div>
         </div>
       <% }) %>
