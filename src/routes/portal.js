@@ -3,7 +3,7 @@ const path = require("path");
 const fs = require("fs");
 const { pool } = require("../db");
 const { requireTeam } = require("../auth");
-const { photoUpload, PHOTO_DIR } = require("../upload");
+const { photoUpload, PHOTO_DIR, documentUpload, DOC_DIR } = require("../upload");
 const {
   fullName, initials, fmtDate,
   PERMISSIONS, permissionCategories, usernameSlug, generatePassword, hashPassword, verifyPassword
@@ -398,11 +398,46 @@ router.post("/account", photoUpload.single("headshot"), async (req, res, next) =
   } catch (err) { next(err); }
 });
 
-// ---------- Documents (read-only) ----------
+// ---------- Documents: series-wide (read-only) + team documents (team admins manage) ----------
 router.get("/documents", requirePermission("documents_view"), async (req, res, next) => {
   try {
+    const team = await loadTeam(req);
     const { rows: documents } = await pool.query("SELECT * FROM documents ORDER BY category ASC, title ASC");
-    res.render("portal/documents", { title: "Documents", nav: "portal", active: "documents", documents, fmtDate });
+    const { rows: teamDocuments } = await pool.query(
+      "SELECT * FROM team_documents WHERE team_id = $1 ORDER BY uploaded_at DESC", [team.id]
+    );
+    res.render("portal/documents", {
+      title: "Documents", nav: "portal", active: "documents",
+      team, documents, teamDocuments, fmtDate, flash: req.query.ok || null
+    });
+  } catch (err) { next(err); }
+});
+
+router.post("/documents/team", requireAdmin, documentUpload.single("file"), async (req, res, next) => {
+  try {
+    const team = await loadTeam(req);
+    if (!req.file) return res.redirect("/portal/documents");
+    const { title } = req.body;
+    await pool.query(
+      `INSERT INTO team_documents (team_id, title, original_name, storage_path) VALUES ($1,$2,$3,$4)`,
+      [team.id, title || req.file.originalname, req.file.originalname, `/uploads/documents/${req.file.filename}`]
+    );
+    res.redirect("/portal/documents?ok=docadded");
+  } catch (err) { next(err); }
+});
+
+router.post("/documents/team/:id/delete", requireAdmin, async (req, res, next) => {
+  try {
+    const team = await loadTeam(req);
+    const { rows } = await pool.query(
+      "SELECT * FROM team_documents WHERE id = $1 AND team_id = $2", [req.params.id, team.id]
+    );
+    const doc = rows[0];
+    if (doc) {
+      fs.unlink(path.join(DOC_DIR, path.basename(doc.storage_path)), () => {});
+      await pool.query("DELETE FROM team_documents WHERE id = $1", [doc.id]);
+    }
+    res.redirect("/portal/documents?ok=docremoved");
   } catch (err) { next(err); }
 });
 
