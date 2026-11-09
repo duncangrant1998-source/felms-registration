@@ -1,0 +1,39 @@
+<%- include('../partials/head', { title, nav, active }) %>
+<div class="page-head">
+  <div>
+    <div class="kicker"><a href="/portal/members" style="color:var(--muted);text-decoration:none">&larr; <%= team.name %> roster</a></div>
+    <h1><%= reset ? 'Login Reset' : 'Team Member Added' %></h1>
+    <div class="sub">
+      <%= reset ? 'A new password has been generated for' : 'An account has been created for' %>
+      <b><%= fullName(member) %></b><%= member.is_admin ? ' (team admin)' : '' %>.
+      This password is shown once — copy it now and send it to them yourself.
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="panel" style="margin-top:18px">
+    <div class="panel-head"><h2>Login credentials</h2></div>
+    <div class="panel-body">
+      <div class="form-grid">
+        <div class="f">
+          <label>Username</label>
+          <input readonly value="<%= username %>" onclick="this.select()">
+        </div>
+        <div class="f">
+          <label>Password</label>
+          <input readonly value="<%= password %>" onclick="this.select()">
+        </div>
+      </div>
+      <div class="hint" style="margin-top:14px">
+        Send these to <%= fullName(member) %> yourself (text, email, in person). FEL Motorsports doesn't send this for you,
+        and this password can't be shown again — use <b>Permissions &rarr; Reset login</b> on their roster entry if it's lost.
+      </div>
+      <div class="form-actions">
+        <a class="btn" href="/portal/members/<%= member.id %>/permissions">Set Permissions</a>
+        <a class="btn primary" href="/portal/members">Continue to My Roster</a>
+      </div>
+    </div>
+  </div>
+</div>
+<%- include('../partials/foot') %>
