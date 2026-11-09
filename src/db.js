@@ -93,6 +93,8 @@ CREATE TABLE IF NOT EXISTS event_roster_log (
   action TEXT NOT NULL,
   changed_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+ALTER TABLE event_roster_log ADD COLUMN IF NOT EXISTS cred_type TEXT NOT NULL DEFAULT 'Annual';
 `;
 
 const EVENT_SEED = [
