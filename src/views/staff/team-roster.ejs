@@ -35,18 +35,48 @@
   </div>
 
   <div class="panel" style="margin-top:18px">
-    <div class="panel-head"><h2>Weekend roster change log</h2></div>
+    <div class="panel-head"><h2>Weekend credential usage</h2></div>
+    <table class="simple">
+      <thead><tr><th>Weekend</th><th>Annual attending</th><th>Single-event attending</th></tr></thead>
+      <tbody>
+        <% weekendBreakdown.forEach(function(w) { %>
+          <tr>
+            <td><%= w.event.round_label %> — <%= w.event.title %></td>
+            <td>
+              <%= w.annualCount %><%= team.annual_limit != null ? '/' + team.annual_limit : '' %>
+              <% if (w.annualOver) { %><span class="g-warn" title="Over annual credential allowance" style="display:inline-flex;align-items:center;justify-content:center;margin-left:6px">!</span><% } %>
+            </td>
+            <td><%= w.singleCount %></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+    <div class="panel-body" style="padding:14px 20px;border-top:.8px solid var(--line-soft)">
+      <span class="label">Single-event credentials used — season total</span>
+      <div class="s-count waiver">
+        <em><%= singleSeasonTotal %></em>
+        <span style="color:var(--muted);font-size:13px">/ <%= team.single_limit != null ? team.single_limit : '∞' %></span>
+        <% if (singleSeasonOver) { %><span class="g-warn" title="Over single-event credential allowance" style="display:inline-flex;align-items:center;justify-content:center;margin-left:6px">!</span><% } %>
+      </div>
+      <% if (singleSeasonOver) { %>
+        <div class="hint" style="color:#FF6B84;margin-top:6px">Over the single-event allowance — follow up with the team if they need to purchase additional credentials.</div>
+      <% } %>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-top:18px">
+    <div class="panel-head"><h2>Weekend roster change log — <%= currentEvent ? currentEvent.round_label + ' — ' + currentEvent.title : 'this weekend' %></h2></div>
     <% if (!log.length) { %>
-      <div class="empty">No weekend-roster changes recorded yet.</div>
+      <div class="empty">No roster changes recorded for this weekend yet.</div>
     <% } else { %>
       <table class="simple">
-        <thead><tr><th>When</th><th>Weekend</th><th>Member</th><th>Change</th></tr></thead>
+        <thead><tr><th>When</th><th>Member</th><th>Credential</th><th>Change</th></tr></thead>
         <tbody>
           <% log.forEach(function(l) { %>
             <tr>
               <td><%= fmtStamp(l.changed_at) %></td>
-              <td><%= l.round_label %> — <%= l.event_title %></td>
               <td><%= l.member_name %></td>
+              <td><%= l.cred_type %></td>
               <td><span class="status-pill <%= l.action === 'added' ? 'fulfilled' : 'cancelled' %>"><%= l.action === 'added' ? 'Added' : 'Removed' %></span></td>
             </tr>
           <% }) %>
