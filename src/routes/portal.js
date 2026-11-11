@@ -198,8 +198,12 @@ router.post("/roster/toggle", requirePermission("weekend_toggle"), async (req, r
 router.get("/members", requirePermission("roster_view"), async (req, res, next) => {
   try {
     const team = await loadTeam(req);
+    const eventId = res.locals.currentEvent ? res.locals.currentEvent.id : null;
     const { rows: members } = await pool.query(
-      "SELECT * FROM members WHERE team_id = $1 ORDER BY last_name ASC, first_name ASC", [team.id]
+      `SELECT members.*, event_roster.waiver_done FROM members
+       LEFT JOIN event_roster ON event_roster.member_id = members.id AND event_roster.event_id = $2
+       WHERE members.team_id = $1 ORDER BY members.last_name ASC, members.first_name ASC`,
+      [team.id, eventId]
     );
     res.render("portal/members", {
       title: "My Roster", nav: "portal", active: "members",
@@ -411,11 +415,26 @@ router.get("/documents", requirePermission("documents_view"), async (req, res, n
       [eventId]
     );
     const { rows: teamDocuments } = await pool.query(
-      "SELECT * FROM team_documents WHERE team_id = $1 ORDER BY uploaded_at DESC", [team.id]
+      `SELECT * FROM team_documents
+       WHERE team_id = $1
+         AND (NOT EXISTS (SELECT 1 FROM team_document_events WHERE team_document_events.team_document_id = team_documents.id)
+          OR EXISTS (SELECT 1 FROM team_document_events WHERE team_document_events.team_document_id = team_documents.id AND team_document_events.event_id = $2))
+       ORDER BY uploaded_at DESC`,
+      [team.id, eventId]
     );
+    const { rows: tdeRows } = await pool.query(
+      `SELECT team_document_events.team_document_id, events.round_label
+       FROM team_document_events JOIN events ON events.id = team_document_events.event_id
+       JOIN team_documents ON team_documents.id = team_document_events.team_document_id
+       WHERE team_documents.team_id = $1
+       ORDER BY events.sort_order ASC`,
+      [team.id]
+    );
+    const teamScopeByDoc = {};
+    for (const r of tdeRows) (teamScopeByDoc[r.team_document_id] = teamScopeByDoc[r.team_document_id] || []).push(r.round_label);
     res.render("portal/documents", {
       title: "Documents", nav: "portal", active: "documents",
-      team, documents, teamDocuments, fmtDate, flash: req.query.ok || null
+      team, documents, teamDocuments, teamScopeByDoc, fmtDate, flash: req.query.ok || null
     });
   } catch (err) { next(err); }
 });
@@ -425,10 +444,21 @@ router.post("/documents/team", requireAdmin, documentUpload.single("file"), asyn
     const team = await loadTeam(req);
     if (!req.file) return res.redirect("/portal/documents");
     const { title } = req.body;
-    await pool.query(
-      `INSERT INTO team_documents (team_id, title, original_name, storage_path) VALUES ($1,$2,$3,$4)`,
+    const scope = req.body.scope === "specific" ? "specific" : "all";
+    let eventIds = req.body.event_ids || [];
+    if (!Array.isArray(eventIds)) eventIds = [eventIds];
+
+    const { rows: inserted } = await pool.query(
+      `INSERT INTO team_documents (team_id, title, original_name, storage_path) VALUES ($1,$2,$3,$4) RETURNING id`,
       [team.id, title || req.file.originalname, req.file.originalname, `/uploads/documents/${req.file.filename}`]
     );
+    const docId = inserted[0].id;
+    if (scope === "specific" && eventIds.length) {
+      for (const eid of eventIds) {
+        const id = parseInt(eid, 10);
+        if (id) await pool.query("INSERT INTO team_document_events (team_document_id, event_id) VALUES ($1,$2) ON CONFLICT DO NOTHING", [docId, id]);
+      }
+    }
     res.redirect("/portal/documents?ok=docadded");
   } catch (err) { next(err); }
 });
