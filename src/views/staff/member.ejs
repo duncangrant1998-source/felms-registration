@@ -25,6 +25,7 @@
       </div>
     </div>
 
+    <div class="hint" style="padding:0 20px;margin-top:14px">Credential and Regs Ack. are one-time for the season. Speed Waiver is signed per race weekend — currently showing <%= currentEvent ? currentEvent.round_label : 'this weekend' %>.</div>
     <div class="pf-status">
       <form class="inline" method="post" action="/staff/members/<%= member.id %>/toggle/cred" style="display:contents">
         <button class="tcard cred<%= member.cred_done ? ' done' : '' %>" type="submit">
@@ -35,7 +36,7 @@
       <form class="inline" method="post" action="/staff/members/<%= member.id %>/toggle/waiver" style="display:contents">
         <button class="tcard waiver<%= member.waiver_done ? ' done' : '' %>" type="submit">
           <div class="tc-top"><span class="tc-name">Speed Waiver</span><span class="tc-box"></span></div>
-          <div class="tc-state"><%= member.waiver_done ? 'Signed ' + fmtStamp(member.waiver_at) : 'Not signed' %></div>
+          <div class="tc-state"><%= member.waiver_done ? 'Signed ' + fmtStamp(member.waiver_at) : 'Not signed' %> — <%= currentEvent ? currentEvent.round_label : '' %></div>
         </button>
       </form>
       <form class="inline" method="post" action="/staff/members/<%= member.id %>/toggle/regs" style="display:contents">
