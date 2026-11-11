@@ -48,6 +48,10 @@ router.post("/login", (req, res) => {
 
 router.get("/logout", (req, res) => {
   req.session.staff = false;
+  // A full sign-out, same as the team portal's own logout, so a leftover team-portal
+  // session can't redirect you straight back into the portal from the home page.
+  req.session.teamId = null;
+  req.session.memberId = null;
   res.redirect("/staff/login");
 });
 
