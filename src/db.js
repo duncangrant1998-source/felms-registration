@@ -37,8 +37,6 @@ CREATE TABLE IF NOT EXISTS members (
   notes TEXT DEFAULT '',
   cred_done BOOLEAN NOT NULL DEFAULT false,
   cred_at TIMESTAMPTZ,
-  waiver_done BOOLEAN NOT NULL DEFAULT false,
-  waiver_at TIMESTAMPTZ,
   regs_done BOOLEAN NOT NULL DEFAULT false,
   regs_at TIMESTAMPTZ,
   card_printed BOOLEAN NOT NULL DEFAULT false,
@@ -75,6 +73,8 @@ CREATE TABLE IF NOT EXISTS events (
 );
 
 ALTER TABLE members DROP COLUMN IF EXISTS event_id;
+ALTER TABLE members DROP COLUMN IF EXISTS waiver_done;
+ALTER TABLE members DROP COLUMN IF EXISTS waiver_at;
 
 CREATE TABLE IF NOT EXISTS event_roster (
   id SERIAL PRIMARY KEY,
@@ -83,6 +83,11 @@ CREATE TABLE IF NOT EXISTS event_roster (
   added_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE(event_id, member_id)
 );
+
+-- Speed waiver is signed per race weekend, unlike credential issuance and regs
+-- acknowledgement (members.cred_done / regs_done), which are one-time for the season.
+ALTER TABLE event_roster ADD COLUMN IF NOT EXISTS waiver_done BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE event_roster ADD COLUMN IF NOT EXISTS waiver_at TIMESTAMPTZ;
 
 CREATE TABLE IF NOT EXISTS event_roster_log (
   id SERIAL PRIMARY KEY,
@@ -118,6 +123,14 @@ CREATE TABLE IF NOT EXISTS document_events (
   document_id INTEGER NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
   event_id INTEGER NOT NULL REFERENCES events(id) ON DELETE CASCADE,
   UNIQUE(document_id, event_id)
+);
+
+-- Same all-weekends-by-default scoping as document_events, but for team-uploaded documents.
+CREATE TABLE IF NOT EXISTS team_document_events (
+  id SERIAL PRIMARY KEY,
+  team_document_id INTEGER NOT NULL REFERENCES team_documents(id) ON DELETE CASCADE,
+  event_id INTEGER NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+  UNIQUE(team_document_id, event_id)
 );
 `;
 
