@@ -81,7 +81,7 @@ router.get("/", async (req, res, next) => {
     const attendanceCounts = await teamAttendanceCounts(eventId);
 
     const { rows: members } = await pool.query(
-      `SELECT members.* FROM members
+      `SELECT members.*, event_roster.waiver_done, event_roster.waiver_at FROM members
        JOIN event_roster ON event_roster.member_id = members.id AND event_roster.event_id = $1
        ORDER BY members.last_name ASC, members.first_name ASC`, [eventId]
     );
@@ -156,6 +156,17 @@ router.get("/members/:id", async (req, res, next) => {
     if (!member) return res.status(404).render("error", { title: "Not found", message: "Member not found." });
     const { rows: teamRows } = await pool.query("SELECT * FROM teams WHERE id = $1", [member.team_id]);
     const team = teamRows[0];
+
+    // Speed waiver is signed per race weekend, so it lives on this member's event_roster
+    // row for the weekend currently selected, not on the member record itself.
+    const eventId = res.locals.currentEvent ? res.locals.currentEvent.id : null;
+    const { rows: erRows } = await pool.query(
+      "SELECT waiver_done, waiver_at FROM event_roster WHERE member_id = $1 AND event_id = $2",
+      [member.id, eventId]
+    );
+    member.waiver_done = !!(erRows[0] && erRows[0].waiver_done);
+    member.waiver_at = erRows[0] ? erRows[0].waiver_at : null;
+
     res.render("staff/member", {
       title: fullName(member),
       nav: "staff",
@@ -199,11 +210,30 @@ router.post("/members/:id/toggle/:field", async (req, res, next) => {
     const { rows } = await pool.query("SELECT * FROM members WHERE id = $1", [req.params.id]);
     const m = rows[0];
     if (!m) return res.status(404).render("error", { title: "Not found", message: "Member not found." });
-    const next_ = !m[`${field}_done`];
-    await pool.query(
-      `UPDATE members SET ${field}_done=$1, ${field}_at=$2, updated_at=now() WHERE id=$3`,
-      [next_, next_ ? new Date() : null, req.params.id]
-    );
+
+    if (field === "waiver") {
+      // Per-weekend: lives on this member's event_roster row for the currently selected event.
+      const eventId = res.locals.currentEvent ? res.locals.currentEvent.id : null;
+      if (eventId) {
+        const { rows: erRows } = await pool.query(
+          "SELECT waiver_done FROM event_roster WHERE event_id = $1 AND member_id = $2", [eventId, req.params.id]
+        );
+        const next_ = !(erRows[0] && erRows[0].waiver_done);
+        await pool.query(
+          `INSERT INTO event_roster (event_id, member_id, waiver_done, waiver_at)
+           VALUES ($1,$2,$3,$4)
+           ON CONFLICT (event_id, member_id) DO UPDATE SET waiver_done = EXCLUDED.waiver_done, waiver_at = EXCLUDED.waiver_at`,
+          [eventId, req.params.id, next_, next_ ? new Date() : null]
+        );
+      }
+    } else {
+      // Season-wide: a one-time mark on the member record itself, independent of race weekend.
+      const next_ = !m[`${field}_done`];
+      await pool.query(
+        `UPDATE members SET ${field}_done=$1, ${field}_at=$2, updated_at=now() WHERE id=$3`,
+        [next_, next_ ? new Date() : null, req.params.id]
+      );
+    }
     res.redirect(req.get("Referer") || `/staff/members/${req.params.id}`);
   } catch (err) { next(err); }
 });
